@@ -15,7 +15,7 @@ def delta(lst):
 	return [k[1] - k[0] for k in zip(a,b)]
 
 
-hill = create_hill(0, 20, 20)
+hill = create_hill(0, 100000, 200000)
 diff = delta(hill)
 print hill
 # print diff
