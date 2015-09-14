@@ -15,7 +15,7 @@ def delta(lst):
 	return [k[1] - k[0] for k in zip(a,b)]
 
 
-hill = create_hill(0, 10, 20)
+hill = create_hill(0, 20, 20)
 diff = delta(hill)
 print hill
 # print diff
@@ -41,7 +41,7 @@ numzeros = len(peakindices) - sum(ispeak)
 
 #peakindices is now the indices of all peaks in the hill profile
 peakindices = [value for value in peakindices if value != 0]
-print peakindices
+# print peakindices
 
 
 # Now, for a given peak index, search for the next inded in the hillprofile
@@ -55,18 +55,21 @@ water = []
 nextindex = peakindices[0]+1
 count = 0
 while count < max(peakindices) -1:
-	while hill[nextindex] < peakheight and nextindex < max(peakindices) - 1:
+	while hill[nextindex] < peakheight and nextindex < len(hill) - 1:
 		valley.append(hill[nextindex])
 		nextindex += 1
 		# pdb.set_trace()
 
 	
-	print 'valley:'
-	print valley
-	if nextindex < max(peakindices)-1:
-		water.append(sum([peakheight - k for k in valley]))
-	else:
+	# print 'valley:'
+	# print valley
+	if nextindex > max(peakindices) - 1:
 		break
+	water.append(sum([peakheight - k for k in valley]))
+	# if nextindex < max(peakindices)-1:
+	# 	water.append(sum([peakheight - k for k in valley]))
+	# else:
+	# 	break
 
 
 	count = nextindex
@@ -85,5 +88,6 @@ while count < max(peakindices) -1:
 
 waterTotal = sum(water)
 
+print 'water:'
 print water
 print 'water sum: %i' %(sum(water))
