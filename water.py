@@ -17,7 +17,7 @@ def delta(lst):
 
 hill = create_hill(0, 100000, 200000)
 diff = delta(hill)
-print hill
+# print hill
 # print diff
 
 #peaks exist where the delta is less than zero
@@ -88,6 +88,6 @@ while count < max(peakindices) -1:
 
 waterTotal = sum(water)
 
-print 'water:'
-print water
+# print 'water:'
+# print water
 print 'water sum: %i' %(sum(water))

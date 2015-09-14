@@ -14,8 +14,8 @@ TOKEN = "HtX8WxoywJDWHYiy4qzP"
 f = h5.File('wti.h5', 'w')
 
 
-wti = Quandl.get("FRED/DCOILWTICO", trim_start="2012-06-01", authtoken = TOKEN, returns = "numpy")
-uwti = Quandl.get("GOOG/NYSEARCA_UWTI", trim_start = "2012-06-01", authtoken = TOKEN, returns = "numpy")
+wti = Quandl.get("FRED/DCOILWTICO", trim_start="2015-03-01", authtoken = TOKEN, returns = "numpy")
+uwti = Quandl.get("GOOG/NYSEARCA_UWTI", trim_start = "2015-03-01", authtoken = TOKEN, returns = "numpy")
 
 # pdb.set_trace()
 
