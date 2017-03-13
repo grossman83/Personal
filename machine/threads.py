@@ -14,21 +14,22 @@ from shapely.affinity import translate, rotate
 import pdb
 
 
-threadPitch = 0.041667
+threadPitch = 0.0625
 threadPitchE = threadPitch * 0.9999999
+threadDepth = 0.04
 
-threadDepth = 0.03
 
-
-boltOD = 0.745
+boltOD = 0.742
 boltLength = 1
-externalThreadDepth = threadPitchE*np.sqrt(3)/2
+# externalThreadDepth = threadPitchE*np.sqrt(3)/2
+externalThreadDepth = threadDepth
 
 
-nutID = 0.720
+nutID = 0.7
 nutOD = 1.0
 nutLength = 0.5
-internalThreadDepth = threadPitchE*np.sqrt(3)/2
+# internalThreadDepth = threadPitchE*np.sqrt(3)/2
+internalThreadDepth = threadDepth
 
 
 
@@ -96,7 +97,6 @@ def cutExternalThreads(bolt):
 
 	return bolt
 
-
 def cutInternalThreads(nut):
 	#takes the initial nut object and cuts the interal threads into its geometry
 	numThreads = int(nut.length / nut.pitch) + 2
@@ -124,8 +124,6 @@ def cutInternalThreads(nut):
 	nut.polygon = nut.polygon.difference(botCut)
 
 	return nut
-
-
 
 def createBoltOutline(boltOD):
 	#threaded bolt face starts at [0,0], and head is at [boltLength, boldOD/2]\
@@ -186,18 +184,8 @@ def createNutThreads(nutID, nutLength, threadPitch):
 
 
 
-
-
-
-
-
-
-# def threadBoltOutline(boldOutline, threadPitch, externalThreadDepth):
-# 	return cutBoltOutline
-
-
-bolt1 = bolt(boltOD, boltLength, threadPitch, threadDepth)
-nut1 = nut(nutID, nutOD, nutLength, threadPitch, threadDepth)
+bolt1 = bolt(boltOD, boltLength, threadPitch, externalThreadDepth)
+nut1 = nut(nutID, nutOD, nutLength, threadPitch, internalThreadDepth)
 
 blah = cutExternalThreads(bolt1)
 
@@ -210,19 +198,27 @@ pdb.set_trace()
 
 
 
-boltOutline = createBoltOutline(boltOD)
-topThreads = createBoltThreads(boltOD, threadPitch, externalThreadDepth)
-threadedBoltOutline = boltOutline.difference(topThreads)
-shapelyDisp(threadedBoltOutline, color = 'b')
-# pdb.set_trace()
+
+
+
+pdb.set_trace()
 
 
 
 
-nutOutline = createNutOutline(nutID, nutOD, nutLength)
-nutThreads = createNutThreads(nutID, nutLength, threadPitch)
-threadedNutOutline = nutOutline.difference(nutThreads)
-shapelyDisp(threadedNutOutline, color = 'r')
+# boltOutline = createBoltOutline(boltOD)
+# topThreads = createBoltThreads(boltOD, threadPitch, externalThreadDepth)
+# threadedBoltOutline = boltOutline.difference(topThreads)
+# shapelyDisp(threadedBoltOutline, color = 'b')
+# # pdb.set_trace()
+
+
+
+
+# nutOutline = createNutOutline(nutID, nutOD, nutLength)
+# nutThreads = createNutThreads(nutID, nutLength, threadPitch)
+# threadedNutOutline = nutOutline.difference(nutThreads)
+# shapelyDisp(threadedNutOutline, color = 'r')
 
 
 # shapelyDisp(boltOutline)
@@ -233,5 +229,3 @@ shapelyDisp(threadedNutOutline, color = 'r')
 # shapelyDisp(newBolt)
 
 plt.ion()
-
-pdb.set_trace()
