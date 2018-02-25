@@ -1,0 +1,358 @@
+# #######################################
+#
+# HAL file for HostMot2 with 3 steppers
+#
+# Derived from Ted Hyde's original hm2-servo config
+#
+# Based up work and discussion with Seb & Peter & Jeff
+# GNU license references - insert here. www.linuxcnc.org
+#
+#
+# ########################################
+# Firmware files are in /lib/firmware/hm2/7i43/
+# Must symlink the hostmot2 firmware directory of sanbox to
+# /lib/firmware before running EMC2...
+# sudo ln -s $HOME/emc2-sandbox/src/hal/drivers/mesa-hostmot2/firmware /lib/firmware/hm2
+#
+# See also:
+# <http://www.linuxcnc.org/docs/devel/html/man/man9/hostmot2.9.html#config%20modparam>
+# and http://wiki.linuxcnc.org/cgi-bin/emcinfo.pl?HostMot2
+#
+# #####################################################################
+
+
+# ###################################
+# Core EMC/HAL Loads
+# ###################################
+
+
+# kinematics
+loadrt trivkins
+
+# motion controller
+loadrt [EMCMOT]EMCMOT servo_period_nsec=[EMCMOT]SERVO_PERIOD num_joints=[TRAJ]AXES
+
+# standard components
+loadrt pid num_chan=4 
+
+# hostmot2 driver
+loadrt hostmot2
+
+# load low-level driver
+loadrt [HOSTMOT2](DRIVER) config=[HOSTMOT2](CONFIG)
+
+#Load classic ladder
+loadrt classicladder_rt numPhysInputs=4 numPhysOutputs=8 numS32in=2 numS32out=2 numFloatIn=4 numFloatOut=4
+#loadusr classicladder custom.clp
+loadusr classicladder custom.clp --nogui
+
+#load the mpg wheel hal file
+#loadusr jog
+
+
+
+
+setp hm2_[HOSTMOT2](BOARD).0.watchdog.timeout_ns 25000000
+
+
+# ################################################
+# THREADS
+# ################################################
+
+addf hm2_[HOSTMOT2](BOARD).0.read         servo-thread
+addf motion-command-handler               servo-thread
+addf motion-controller                    servo-thread
+addf pid.0.do-pid-calcs                   servo-thread
+addf pid.1.do-pid-calcs                   servo-thread
+addf pid.2.do-pid-calcs                   servo-thread
+addf pid.3.do-pid-calcs                   servo-thread
+addf hm2_[HOSTMOT2](BOARD).0.write        servo-thread
+addf classicladder.0.refresh		  servo-thread
+#addf hm2_[HOSTMOT2](BOARD).0.pet_watchdog servo-thread
+       
+# Hacks to enable the DPLL sampling of the stepgen position:
+
+# setp hm2_[HOSTMOT2](BOARD).0.raw.write_address 0x2A00
+# Enable and select timer channel 1:
+#setp hm2_[HOSTMOT2](BOARD).0.raw.write_data 0x00009000  
+# Disable:
+#setp hm2_[HOSTMOT2](BOARD).0.raw.write_data 0x00000000
+#setp hm2_[HOSTMOT2](BOARD).0.raw.write_strobe true
+# latch 50 usec beforw nominal read time:
+
+setp hm2_[HOSTMOT2](BOARD).0.dpll.01.timer-us -50
+setp hm2_[HOSTMOT2](BOARD).0.stepgen.timer-number 1
+
+##########################SPINDLE CONTROL######################
+#connect encoder inputs to linuxcnc and set scale to 4096
+loadrt scale count=3
+
+addf scale.0 servo-thread
+addf scale.1 servo-thread
+addf scale.2 servo-thread
+
+setp scale.0.gain 0.000244140625
+setp scale.1.gain 0.000244140625
+setp scale.2.gain 60.0
+
+#setp scale.0.gain 0.5
+#setp scale.1.gain 0.5
+
+net scaledSpindlePosition hm2_7i92.0.encoder.00.position => scale.0.in
+net scaledSpindleVelocity hm2_7i92.0.encoder.00.velocity => scale.1.in
+
+net spindleRevs scale.0.out => motion.spindle-revs
+net spindleSpeed scale.1.out => motion.spindle-speed-in
+
+net spindle-index-enable hm2_7i92.0.encoder.00.index-enable <=> motion.spindle-index-enable
+
+
+##################SPINDLE AT SPEED#####################
+# load a near component and attach it to a thread
+loadrt near
+addf near.0 servo-thread
+
+# connect one input to the commanded spindle speed
+net spindlerpm => near.0.in1
+
+# connect one input to the encoder-measured spindle speed
+net spindleSpeed => scale.2.in
+net measuredSpindleRPM scale.2.out => near.0.in2
+#net spindle-velocity => near.0.in2
+
+# connect the output to the spindle-at-speed input
+net spindle-at-speed motion.spindle-at-speed <= near.0.out
+
+# set the spindle speed inputs to agree if within 5%
+setp near.0.scale 1.05
+
+
+##########################SPINDLE CONTROL######################
+
+
+
+# ######################################################
+# Axis-of-motion Specific Configs (not the GUI)
+# ######################################################
+
+
+# ################
+# X [0] Axis
+# ################
+
+# axis enable chain
+newsig emcmot.00.enable bit
+sets emcmot.00.enable FALSE
+
+net emcmot.00.enable <= axis.0.amp-enable-out 
+net emcmot.00.enable => hm2_[HOSTMOT2](BOARD).0.stepgen.00.enable pid.0.enable
+
+#@MG
+net max-x <= hm2_7i92.0.7i76.0.0.input-01-not
+net min-x <= hm2_7i92.0.7i76.0.0.input-02-not
+net home-x <= hm2_7i92.0.7i76.0.0.input-00-not
+net min-x => axis.0.neg-lim-sw-in
+net max-x => axis.0.pos-lim-sw-in
+net home-x => axis.0.home-sw-in
+
+
+# position command and feedback
+net emcmot.00.pos-cmd axis.0.motor-pos-cmd => pid.0.command
+net emcmot.00.vel-cmd axis.0.joint-vel-cmd => pid.0.command-deriv
+net motor.00.pos-fb <= hm2_[HOSTMOT2](BOARD).0.stepgen.00.position-fb axis.0.motor-pos-fb pid.0.feedback
+net motor.00.command pid.0.output hm2_[HOSTMOT2](BOARD).0.stepgen.00.velocity-cmd
+setp pid.0.error-previous-target true
+
+
+# timing parameters
+setp hm2_[HOSTMOT2](BOARD).0.stepgen.00.dirsetup        [AXIS_0]DIRSETUP
+setp hm2_[HOSTMOT2](BOARD).0.stepgen.00.dirhold         [AXIS_0]DIRHOLD
+
+setp hm2_[HOSTMOT2](BOARD).0.stepgen.00.steplen         [AXIS_0]STEPLEN
+setp hm2_[HOSTMOT2](BOARD).0.stepgen.00.stepspace       [AXIS_0]STEPSPACE
+
+setp hm2_[HOSTMOT2](BOARD).0.stepgen.00.position-scale  [AXIS_0]SCALE
+
+setp hm2_[HOSTMOT2](BOARD).0.stepgen.00.maxvel          [AXIS_0]STEPGEN_MAX_VEL
+setp hm2_[HOSTMOT2](BOARD).0.stepgen.00.maxaccel        [AXIS_0]STEPGEN_MAX_ACC
+
+setp hm2_[HOSTMOT2](BOARD).0.stepgen.00.step_type       0
+setp hm2_[HOSTMOT2](BOARD).0.stepgen.00.control-type    1
+
+# set PID loop gains from inifile
+setp pid.0.Pgain [AXIS_0]P
+setp pid.0.Igain [AXIS_0]I
+setp pid.0.Dgain [AXIS_0]D
+setp pid.0.bias [AXIS_0]BIAS
+setp pid.0.FF0 [AXIS_0]FF0
+setp pid.0.FF1 [AXIS_0]FF1
+setp pid.0.FF2 [AXIS_0]FF2
+setp pid.0.deadband [AXIS_0]DEADBAND
+setp pid.0.maxoutput [AXIS_0]MAX_OUTPUT
+setp pid.0.maxerror [AXIS_0]MAX_ERROR
+
+# ################
+# Y [1] Axis
+# ################
+
+# axis enable chain
+#newsig emcmot.01.enable bit
+#sets emcmot.01.enable FALSE
+
+#net emcmot.01.enable <= axis.1.amp-enable-out 
+#net emcmot.01.enable => hm2_[HOSTMOT2](BOARD).0.stepgen.01.enable pid.1.enable
+
+# position command and feedback
+#net emcmot.01.pos-cmd axis.1.motor-pos-cmd => pid.1.command
+#net emcmot.01.vel-cmd axis.1.joint-vel-cmd => pid.1.command-deriv
+#net motor.01.pos-fb <= hm2_[HOSTMOT2](BOARD).0.stepgen.01.position-fb axis.1.motor-pos-fb pid.1.feedback
+#net motor.01.command pid.1.output hm2_[HOSTMOT2](BOARD).0.stepgen.01.velocity-cmd
+#setp pid.1.error-previous-target true
+
+# timing parameters
+#setp hm2_[HOSTMOT2](BOARD).0.stepgen.01.dirsetup        [AXIS_1]DIRSETUP
+#setp hm2_[HOSTMOT2](BOARD).0.stepgen.01.dirhold         [AXIS_1]DIRHOLD
+
+#setp hm2_[HOSTMOT2](BOARD).0.stepgen.01.steplen         [AXIS_1]STEPLEN
+#setp hm2_[HOSTMOT2](BOARD).0.stepgen.01.stepspace       [AXIS_1]STEPSPACE
+
+#setp hm2_[HOSTMOT2](BOARD).0.stepgen.01.position-scale  [AXIS_1]SCALE
+
+#setp hm2_[HOSTMOT2](BOARD).0.stepgen.01.maxvel          [AXIS_1]STEPGEN_MAX_VEL
+#setp hm2_[HOSTMOT2](BOARD).0.stepgen.01.maxaccel        [AXIS_1]STEPGEN_MAX_ACC
+
+#setp hm2_[HOSTMOT2](BOARD).0.stepgen.01.step_type       0
+#setp hm2_[HOSTMOT2](BOARD).0.stepgen.01.control-type    1
+
+# set PID loop gains from inifile
+#setp pid.1.Pgain [AXIS_1]P
+#setp pid.1.Igain [AXIS_1]I
+#setp pid.1.Dgain [AXIS_1]D
+#setp pid.1.bias [AXIS_1]BIAS
+#setp pid.1.FF0 [AXIS_1]FF0
+#setp pid.1.FF1 [AXIS_1]FF1
+#setp pid.1.FF2 [AXIS_1]FF2
+#setp pid.1.deadband [AXIS_1]DEADBAND
+#setp pid.1.maxoutput [AXIS_1]MAX_OUTPUT
+#setp pid.1.maxerror [AXIS_1]MAX_ERROR
+
+# ################
+# Z [2] Axis
+# ################
+
+# axis enable chain
+newsig emcmot.02.enable bit
+sets emcmot.02.enable FALSE
+
+net emcmot.02.enable <= axis.2.amp-enable-out 
+net emcmot.02.enable => hm2_[HOSTMOT2](BOARD).0.stepgen.02.enable pid.2.enable
+
+#@MG
+net min-z <= hm2_7i92.0.7i76.0.0.input-04-not
+net max-z <= hm2_7i92.0.7i76.0.0.input-03-not
+net home-z <= hm2_7i92.0.7i76.0.0.input-05-not
+net min-z => axis.2.neg-lim-sw-in
+net max-z => axis.2.pos-lim-sw-in
+net home-z => axis.2.home-sw-in
+
+
+# position command and feedback
+net emcmot.02.pos-cmd axis.2.motor-pos-cmd => pid.2.command
+net emcmot.02.vel-cmd axis.2.joint-vel-cmd => pid.2.command-deriv
+net motor.02.pos-fb <= hm2_[HOSTMOT2](BOARD).0.stepgen.02.position-fb axis.2.motor-pos-fb pid.2.feedback
+net motor.02.command pid.2.output hm2_[HOSTMOT2](BOARD).0.stepgen.02.velocity-cmd
+setp pid.2.error-previous-target true
+
+
+# timing parameters
+setp hm2_[HOSTMOT2](BOARD).0.stepgen.02.dirsetup        [AXIS_2]DIRSETUP
+setp hm2_[HOSTMOT2](BOARD).0.stepgen.02.dirhold         [AXIS_2]DIRHOLD
+
+setp hm2_[HOSTMOT2](BOARD).0.stepgen.02.steplen         [AXIS_2]STEPLEN
+setp hm2_[HOSTMOT2](BOARD).0.stepgen.02.stepspace       [AXIS_2]STEPSPACE
+
+setp hm2_[HOSTMOT2](BOARD).0.stepgen.02.position-scale  [AXIS_2]SCALE
+
+setp hm2_[HOSTMOT2](BOARD).0.stepgen.02.maxvel          [AXIS_2]STEPGEN_MAX_VEL
+setp hm2_[HOSTMOT2](BOARD).0.stepgen.02.maxaccel        [AXIS_2]STEPGEN_MAX_ACC
+
+setp hm2_[HOSTMOT2](BOARD).0.stepgen.02.step_type       0
+setp hm2_[HOSTMOT2](BOARD).0.stepgen.02.control-type    1
+
+# set PID loop gains from inifile
+setp pid.2.Pgain [AXIS_2]P
+setp pid.2.Igain [AXIS_2]I
+setp pid.2.Dgain [AXIS_2]D
+setp pid.2.bias [AXIS_2]BIAS
+setp pid.2.FF0 [AXIS_2]FF0
+setp pid.2.FF1 [AXIS_2]FF1
+setp pid.2.FF2 [AXIS_2]FF2
+setp pid.2.deadband [AXIS_2]DEADBAND
+setp pid.2.maxoutput [AXIS_2]MAX_OUTPUT
+setp pid.2.maxerror [AXIS_2]MAX_ERROR
+
+# Spindle control
+
+# set PID loop gains from inifile
+setp pid.3.Pgain [SPINDLE_9]P
+setp pid.3.Igain [SPINDLE_9]I
+setp pid.3.Dgain [SPINDLE_9]D
+setp pid.3.bias [SPINDLE_9]BIAS
+setp pid.3.FF0 [SPINDLE_9]FF0
+setp pid.3.FF1 [SPINDLE_9]FF1
+setp pid.3.FF2 [SPINDLE_9]FF2
+setp pid.3.deadband [SPINDLE_9]DEADBAND
+setp pid.3.maxoutput [SPINDLE_9]MAX_OUTPUT
+setp pid.3.maxerror [SPINDLE_9]MAX_ERROR
+
+
+setp hm2_[HOSTMOT2](BOARD).0.7i76.0.0.spinout-scalemax [SPINDLE_9]SCALE
+setp hm2_[HOSTMOT2](BOARD).0.7i76.0.0.spinout-minlim [SPINDLE_9]MINLIM
+setp hm2_[HOSTMOT2](BOARD).0.7i76.0.0.spinout-maxlim [SPINDLE_9]MAXLIM
+
+#@MG
+#net spindle-vel-cmd <= motion.spindle-speed-out-abs
+#net spindle-vel-cmd => hm2_[HOSTMOT2](BOARD).0.7i76.0.0.spinout
+net spindlerpm motion.spindle-speed-out-abs => hm2_[HOSTMOT2](BOARD).0.7i76.0.0.spinout
+
+net spindle-enable-cmd <= motion.spindle-on
+net spindle-enable-cmd => hm2_[HOSTMOT2](BOARD).0.7i76.0.0.spinena
+net spindle-dir-cmd <= motion.spindle-reverse
+net spindle-dir-cmd => hm2_[HOSTMOT2](BOARD).0.7i76.0.0.spindir
+
+
+#net spindle-enable-cmd => hm2_[HOSTMOT2](BOARD).0.led.CR01
+#net spindle-enable <= motion.spindle.
+
+# ##################################################
+# Standard I/O Block - EStop, Etc
+# ##################################################
+
+# create a signal for the estop loopback
+net estop-loop iocontrol.0.user-enable-out => iocontrol.0.emc-enable-in
+
+# create signals for tool loading loopback
+net tool-prep-loop iocontrol.0.tool-prepare => iocontrol.0.tool-prepared
+net tool-change-start iocontrol.0.tool-change => classicladder.0.in-00
+
+
+#@MG
+net tool-change-done classicladder.0.out-01 => iocontrol.0.tool-changed
+net tool-change-start => classicladder.0.in-00
+#net vaneSense hm2_7i92.0.7i76.0.0.input-06 => classicladder.0.in-02
+net vaneSense hm2_7i92.0.7i76.0.0.input-06-not => classicladder.0.in-02
+net reqToolNum iocontrol.0.tool-prep-number => classicladder.0.s32in-00
+net airPressure hm2_7i92.0.7i76.0.0.input-07 => classicladder.0.in-01
+net actuateAir classicladder.0.out-00 => hm2_7i92.0.7i76.0.0.output-00
+net actuateMot classicladder.0.out-02 => hm2_7i92.0.7i76.0.0.output-01
+net coolantPump iocontrol.0.coolant-flood => hm2_7i92.0.7i76.0.0.output-02
+
+#setp toolAtBoot = 0
+net currentTool iocontrol.0.tool-number => classicladder.0.s32in-01
+
+
+
+
+
+#net tool-change-loop iocontrol.0.tool-change => iocontrol.0.tool-changed
+

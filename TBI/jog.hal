@@ -1,0 +1,70 @@
+# Jog Pendant
+loadrt encoder num_chan=2
+loadrt mux4 count=1
+addf encoder.capture-position servo-thread
+addf encoder.update-counters servo-thread
+addf mux4.0 servo-thread
+
+# If your MPG outputs a quadrature signal per click set x4 to 1
+# If your MPG puts out 1 pulse per click set x4 to 0
+setp encoder.0.x4-mode 1
+
+# For velocity mode, set to 1
+# In velocity mode the axis stops when the dial is stopped
+# even if that means the commanded motion is not completed,
+# For position mode (the default), set to 0
+# In position mode the axis will move exactly jog-scale
+# units for each count, regardless of how long that might take,
+setp axis.0.jog-vel-mode 1
+setp axis.2.jog-vel-mode 1
+
+# This sets the scale that will be used based on the input to the mux4
+setp mux4.0.in0 0.01
+setp mux4.0.in1 0.001
+setp mux4.0.in2 0.01
+setp mux4.0.in3 0.02
+
+
+# The inputs to the mux4 component
+net scale1 mux4.0.sel0 <= hm2_7i92.0.7i76.0.0.input-25
+net scale2 mux4.0.sel1 <= hm2_7i92.0.7i76.0.0.input-26
+
+# The output from the mux4 is sent to each axis jog scale
+#net mpg-scale => axis.y.jog-scale
+net mpg-scale <= mux4.0.out
+net mpg-scale => axis.0.jog-scale
+net mpg-scale => axis.2.jog-scale
+
+# The MPG inputs
+#net mpg-a encoder.0.phase-A <= parport.1.pin-02-in
+#net mpg-b encoder.0.phase-B <= parport.1.pin-03-in
+#net mpgx-a encoder.0.phase-A <= hm2_7i92.0.7i76.0.0.input-16
+#net mggx-b encoder.0.phase-B <= hm2_7i92.0.7i76.0.0.input-17
+#net mpgz-a encoder.1.phase-A <= hm2_7i92.0.7i76.0.0.input-18
+#net mggz-b encoder.1.phase-B <= hm2_7i92.0.7i76.0.0.input-19
+
+##sample from web
+# Now are commented and it seems to know that the encoder is connected to pins 16 and 17
+#net mpg-a encoder.0.phase-A <= hm2_7i76e.0.7i76.0.0.input-16
+#net mpg-b encoder.0.phase-B <= hm2_7i76e.0.7i76.0.0.input-17
+###sample from web
+
+# The Axis select inputs
+#net mpg-y axis.y.jog-enable <= parport.1.pin-05-in
+#net mpg-x axis.0.jog-enable <= hm2_7i92.0.7i76.0.0.input-30
+##MG temporary
+setp axis.0.jog-enable TRUE
+##MG temporary
+#net mpg-z axis.2.jog-enable <= hm2_7i92.0.7i76.0.0.input-30
+
+# The encoder output counts to the axis. Only the selected axis will move.
+#net encoderx-counts => axis.x.jog-counts
+#net encoder-counts => axis.y.jog-counts
+#net encoderz-counts => axis.z.jog-counts
+
+net encoderx-counts <= hm2_7i92.0.7i76.0.0.enc0.count
+net encoderz-counts <= hm2_7i92.0.7i76.0.0.enc1.count
+net encoderx-counts => axis.0.jog-counts
+net encoderz-counts => axis.2.jog-counts
+
+
