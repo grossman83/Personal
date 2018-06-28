@@ -29,18 +29,11 @@ user_joint2_angle = design.userParameters.itemByName('j2_angle')
 user_joint_angles = [user_joint0_angle, user_joint1_angle, user_joint2_angle]
 
 
-# class myRigidJoint:
-# 	def __init__(self, fusion_joint_object, user_joint_angle):
-# 		self.fjo = fusion_joint_object
-# 		self.user_angle = user_joint_angle.value
-		# self.suppressed = fusion_joint_object.isSuppressed
-		# self.corresponding_revolute_name = corresponding_revolute_name
-
-# class myRevoluteJoint(fusion_joint_object, corresponding_rigid_name):
-# 	def __init__:
-# 		self.corresponding_rigid_name = corresponding_rigid_name
-
-
+class myRigidJoint:
+	def __init__(self, fusion_joint_object, user_joint_angle):
+		self.fjo = fusion_joint_object
+		self.user_angle = user_joint_angle.value
+		self.suppressed = self.fjo.isSuppressed
 
 
 def getDist2Origin(component):
@@ -194,7 +187,8 @@ def sweepJoint(joint_id, rigid_joints, revolute_joints, thetas, mobilePlatform):
 	except:
 		if ui:
 			ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))
-   
+
+
 def sweepJoint2(joint_id, rigid_joints, revolute_joints, thetas, mobilePlatform):
 	try:	
 		rigid_joints[joint_id].isSuppressed = True
@@ -232,9 +226,11 @@ def run(context):
 
 		mobilePlatform = rootComp.occurrences.itemByName('Mobile_Platform:1')
 
-		# rigid0 = myRigidJoint(rootComp.joints.itemByName('Shoulder0'), design.userParameters.itemByName('joint0_angle'))
-		# rigid1 = myRigidJoint(rootComp.joints.itemByName('Shoulder1'), design.userParameters.itemByName('joint1_angle'))
-		# rigid2 = myRigidJoint(rootComp.joints.itemByName('Shoulder2'), design.userParameters.itemByName('joint2_angle'))
+		rigid0 = myRigidJoint(rootComp.joints.itemByName('Shoulder0'), design.userParameters.itemByName('j0_angle'))
+		rigid1 = myRigidJoint(rootComp.joints.itemByName('Shoulder1'), design.userParameters.itemByName('j1_angle'))
+		rigid2 = myRigidJoint(rootComp.joints.itemByName('Shoulder2'), design.userParameters.itemByName('j2_angle'))
+
+		my_rigid_joints = [rigid0, rigid1, rigid2]
 
 		rigid0 = rootComp.joints.itemByName('Shoulder0')
 		rigid1 = rootComp.joints.itemByName('Shoulder1')
@@ -288,14 +284,14 @@ def run(context):
 		###########TEST###########
 
 		###########TEST###########
-		test_len = 100
-		thetas = [[pi*random.randint(-50,50)/180.0, pi*random.randint(-50,50)/180.0, pi*random.randint(-50,50)/180.0 ] for k in range(test_len)]
-		start_time = time.time()
-		for vals in thetas:
-			testSuppress(rigid_joints)
-		stop_time = time.time()
+		# test_len = 100
+		# thetas = [[pi*random.randint(-50,50)/180.0, pi*random.randint(-50,50)/180.0, pi*random.randint(-50,50)/180.0 ] for k in range(test_len)]
+		# start_time = time.time()
+		# for vals in thetas:
+		# 	testSuppress(rigid_joints)
+		# stop_time = time.time()
 
-		delta_time = stop_time-start_time
+		# delta_time = stop_time-start_time
 		###########TEST###########
 
 
