@@ -2,7 +2,7 @@ import adsk.core, adsk.fusion, traceback, math, random
 import csv
 import os
 import json
-import time
+#import time
 import operator
 
 pi = math.pi
@@ -12,7 +12,7 @@ xyzs = []
 
 rootPath = os.path.expanduser('~')
 fullPath = os.path.join(rootPath, 'Documents', 'output3.csv')
-jsonFullPath = 'Documents/data.json'
+jsonFullPath = 'Documents/data2.json'
 
 app = adsk.core.Application.get()
 ui = app.userInterface
@@ -183,7 +183,7 @@ def run(context):
 		thetas = []
 		dthetas = []
 		dxyzs = []
-		for t1 in range(-3,3):
+		for t1 in range(-10,3):
 			for t2 in range(-3,3):
 				for t3 in range(-3,3):
 					#set the angles
@@ -193,7 +193,7 @@ def run(context):
 					xyzs.append(cur_xyzs)
 					thetas.append([t1,t2,t3])
 					#now move by dtheta in each axis
-					setRigidJoints(rigid_joints, revolute_joints, [20*t1*pi/180+dtheta, 20*t2*pi/180+dtheta, 20*t2*pi/180+dtheta])
+					setRigidJoints(rigid_joints, revolute_joints, [6*t1*pi/180+dtheta, 6*t2*pi/180+dtheta, 6*t2*pi/180+dtheta])
 					nxyzs = [mobilePlatform.transform.translation.x, mobilePlatform.transform.translation.y, mobilePlatform.transform.translation.x]
 					dxyzs.append(list(map(operator.sub, nxyzs, cur_xyzs)))
 					dthetas.append(dtheta)
@@ -225,7 +225,7 @@ def run(context):
 
 #		forCSV = [xyzs, dxyzs, dthetas]
 
-		write2CSV(thetas, fullPath)
+#		write2CSV(thetas, fullPath)
 
 	except:
 		if ui:
