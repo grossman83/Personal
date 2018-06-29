@@ -12,15 +12,11 @@ xyzs = []
 
 rootPath = os.path.expanduser('~')
 fullPath = os.path.join(rootPath, 'Documents', 'output3.csv')
-jsonFullPath = 'Documents/data6.json'
+jsonFullPath = 'Documents/data7.json'
 
 app = adsk.core.Application.get()
 ui = app.userInterface
 design = app.activeProduct
-
-# user_joint0_angle = design.userParameters.itemByName('joint0_angle')
-# user_joint1_angle = design.userParameters.itemByName('joint1_angle')
-# user_joint2_angle = design.userParameters.itemByName('joint2_angle')
 
 user_joint0_angle = design.userParameters.itemByName('j0_angle')
 user_joint1_angle = design.userParameters.itemByName('j1_angle')
@@ -28,12 +24,13 @@ user_joint2_angle = design.userParameters.itemByName('j2_angle')
 
 user_joint_angles = [user_joint0_angle, user_joint1_angle, user_joint2_angle]
 
-
-class myRigidJoint:
-	def __init__(self, fusion_joint_object, user_joint_angle):
-		self.fjo = fusion_joint_object
-		self.user_angle = user_joint_angle.value
-		self.suppressed = self.fjo.isSuppressed
+#NOT WORKING
+# class myRigidJoint:
+# 	def __init__(self, fusion_joint_object, user_joint_angle):
+# 		self.fjo = fusion_joint_object
+# 		self.user_angle = user_joint_angle.value
+# 		self.suppressed = self.fjo.isSuppressed
+#NOT WORKING
 
 
 def getDist2Origin(component):
@@ -67,14 +64,6 @@ def moveJoint(free_joint, fixed_joints, newAngle):
 		if ui:
 			ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))
 
-
-# def move2thetas(rigid_joints, revolute_joints, new_thetas):
-# 	current_thetas = [k.angle.value for k in rigid_joints]
-# 	for k in zip(current_thetas, new_thetas):
-# 		if k[0] != k[1]:
-
-
-
 def write2CSV(list_of_lists, filepath):
 	try:
 		with open(fullPath, 'w', newline='\n') as f:
@@ -84,7 +73,6 @@ def write2CSV(list_of_lists, filepath):
 	except:
 		if ui:
 			ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))
-
 
 def readCSV(fullPath):
 	blah = []
@@ -96,36 +84,10 @@ def readCSV(fullPath):
 	csvfile.close()
 	return blah
 
-
-
 def write2json(filePath, data):
 	with open(filePath, 'w') as fp:
 		# json.dump(data, fp)
 		json.dump(data, fp, sort_keys=True, indent=4, separators=(',', ': '))
-
-
-# def setRigidJoints(rigid_joints, thetas):
-# 	# user_joint0_angle.value = thetas[0]*pi/180
-# 	# user_joint1_angle.value = thetas[1]*pi/180
-# 	# user_joint2_angle.value = thetas[2]*pi/180
-# 	for tr in zip(rigid_joints, thetas):
-# 		tr[0].user_angle = tr[1]
-# 	adsk.doEvents()
-
-
-# def setRigidJoints(rigid_joints, revolute_joints, thetas):
-# 	current_thetas = [j.user_angle for j in rigid_joints]
-# 	for Ts in zip(current_thetas, range(len(thetas))):
-# 		if Ts[0] != thetas[Ts[1]]:
-# 			idx = Ts[1]
-# 			#current rigid angle not equal to desired angle... free the joint then move as revolute
-# 			rigid_joints[idx].isSuppressed = True
-# 			revolute_joints[idx].jointMotion.rotationValue = thetas[idx]
-# 			#now set the user angle that defines the rigid joint to match
-# 			rigid_joints[idx].user_angle = thetas[idx]
-# 			rigid_joints[idx].isSuppressed = False
-# 			adsk.doEvents()
-
 
 def setRigidJoints2(rigid_joints, revolute_joints, thetas):
 	try:	
@@ -140,15 +102,14 @@ def setRigidJoints2(rigid_joints, revolute_joints, thetas):
 				#now set the user angle that defines the rigid joint to match
 				# user_angle.value = thetas[idx]
 				# adsk.doEvents()
-				# rigid_joints[idx].fjo.isSuppressed = False
+				rigid_joints[idx].angle.value = theta
 				rigid_joints[idx].isSuppressed = False
 				adsk.doEvents()
 	except:
 		if ui:
 			ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))
 
-
-def setRigidJoints3(rigid_joints, revolute_joints, user_angles, thetas):
+def setRigidJoints(rigid_joints, revolute_joints, user_angles, thetas):
 	try:	
 		for ua_idx in zip(user_angles, range(len(thetas))):
 			user_angle = ua_idx[0]
@@ -160,35 +121,95 @@ def setRigidJoints3(rigid_joints, revolute_joints, user_angles, thetas):
 				user_angles[idx].value = thetas[idx]
 				rigid_joints[idx].isSuppressed = True
 				rigid_joints[idx].isSuppressed = False
-				adsk.doEvents()
-	except:
-		if ui:
-			ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))
-
-
-
-def sweepJoint(joint_id, rigid_joints, revolute_joints, thetas, mobilePlatform):
-	try:	
-		rigid_joints[joint_id].isSuppressed = True
-		xyzs = []
-		angles = []
-		for theta in thetas:
-			revolute_joints[joint_id].jointMotion.rotationValue = theta
-			adsk.doEvents()
-			temp_angles = [j.user_angle for j in rigid_joints]
-			temp_angles[joint_id] = theta
-			angles.append(temp_angles)
-			xyzs.append([mobilePlatform.transform.translation.x, mobilePlatform.transform.translation.y, mobilePlatform.transform.translation.z])
-		rigid_joints[joint_id].user_angle = thetas[-1]
-		rigid_joints[joint_id].isSuppressed = False
 		adsk.doEvents()
-		return angles, xyzs
-
+		adsk.doEvents()
 	except:
 		if ui:
 			ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))
 
 
+def quickSetRigidJoints(rigid_joints, revolute_joints, thetas):
+	try:	
+		for idx in range(len(thetas)):
+			current_angle = rigid_joints[idx].angle.value
+			if current_angle != thetas[idx]:
+				#current rigid angle not equal to desired angle
+				# revolute_joints[idx].jointMotion.rotationValue = thetas[idx]
+				rigid_joints[idx].angle.value = thetas[idx]
+		adsk.doEvents()
+		adsk.doEvents()
+	except:
+		if ui:
+			ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))
+
+
+
+def setRevoluteJoints(rigid_joints, revolute_joints, thetas):
+	for j_idx in zip(rigid_joints, range(len(thetas))):
+		j = j_idx[0]
+		idx = j_idx[1]
+		j.isSuppressed = True
+		j.angle.value = thetas[idx]
+	for j_idx in zip(revolute_joints, range(len(thetas))):
+		j = j_idx[0]
+		idx = j_idx[1]
+		j.jointMotion.rotationValue = thetas[idx]
+	for j in rigid_joints:
+		j.isSuppressed = False
+		adsk.doEvents()
+
+def setRevoluteJoints2(rigid_joints, revolute_joints, thetas):
+	for j in rigid_joints:
+		if not j.isSuppressed:
+			j.isSuppressed = True
+	for j_idx in zip(revolute_joints, range(len(thetas))):
+		j_idx[0].jointMotion.rotationValue = thetas[j_idx[1]]
+
+
+def suppressJoints(joints):
+	for j in joints:
+		j.isSuppressed = True
+		while not j.isSuppressed:
+			time.sleep(0.05)
+		# adsk.doEvents()
+
+def unSuppressJoints(joints):
+	for j in joints:
+		j.isSuppressed = False
+		while j.isSuppressed:
+			time.sleep(0.05)
+		# adsk.doEvents()
+
+def setRevoluteJoints_locked(revolute_joints, thetas):
+	for j_idx in zip(revolute_joints, range(len(thetas))):
+		joint = j_idx[0]
+		idx = j_idx[1]
+		if joint.jointMotion.rotationValue != thetas[idx]:
+			joint.isLocked = False
+			joint.jointMotion.rotationValue = thetas[idx]
+			joint.isLocked = True
+	adsk.doEvents()
+	adsk.doEvents()
+
+
+
+# def setRevoluteJoints(rigid_joints, revolute_joints, thetas):
+# 	for j_idx in zip(rigid_joints, range(len(thetas))):
+# 		j = j_idx[0]
+# 		idx = j_idx[1]
+# 		j.isSuppressed = True
+# 		j.angle.value = thetas[idx]
+# 	for j_idx in zip(revolute_joints, range(len(thetas))):
+# 		j = j_idx[0]
+# 		idx = j_idx[1]
+# 		j.jointMotion.rotationValue = thetas[idx]
+# 	for j in rigid_joints:
+# 		j.isSuppressed = False
+# 		adsk.doEvents()
+
+
+
+# sweepJoint2(0, rigid_joints, revolute_joints, [k*pi/180 for k in range(-50,50)], mobilePlatform)
 def sweepJoint2(joint_id, rigid_joints, revolute_joints, thetas, mobilePlatform):
 	try:	
 		rigid_joints[joint_id].isSuppressed = True
@@ -213,12 +234,14 @@ def sweepJoint2(joint_id, rigid_joints, revolute_joints, thetas, mobilePlatform)
 
 
 def testSuppress(rigid_joints):
-	for j in rigid_joints:
-		j.isSuppressed = True
-		j.isSuppressed = False
-	adsk.doEvents()
-
-
+	try:
+		for j in rigid_joints:
+			j.isSuppressed = True
+			j.isSuppressed = False
+		adsk.doEvents()
+	except:
+		if ui:
+			ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))
 
 def run(context):
 	try:
@@ -226,11 +249,15 @@ def run(context):
 
 		mobilePlatform = rootComp.occurrences.itemByName('Mobile_Platform:1')
 
-		rigid0 = myRigidJoint(rootComp.joints.itemByName('Shoulder0'), design.userParameters.itemByName('j0_angle'))
-		rigid1 = myRigidJoint(rootComp.joints.itemByName('Shoulder1'), design.userParameters.itemByName('j1_angle'))
-		rigid2 = myRigidJoint(rootComp.joints.itemByName('Shoulder2'), design.userParameters.itemByName('j2_angle'))
+		#NOT Working
+		# rigid0 = myRigidJoint(rootComp.joints.itemByName('Shoulder0'), design.userParameters.itemByName('j0_angle'))
+		# rigid1 = myRigidJoint(rootComp.joints.itemByName('Shoulder1'), design.userParameters.itemByName('j1_angle'))
+		# rigid2 = myRigidJoint(rootComp.joints.itemByName('Shoulder2'), design.userParameters.itemByName('j2_angle'))
+		# my_rigid_joints = [rigid0, rigid1, rigid2]
+		#NOT Working
+		
 
-		my_rigid_joints = [rigid0, rigid1, rigid2]
+
 
 		rigid0 = rootComp.joints.itemByName('Shoulder0')
 		rigid1 = rootComp.joints.itemByName('Shoulder1')
@@ -251,24 +278,43 @@ def run(context):
 		thetas = []
 		dthetas = []
 		dxyzs = []
-		theta_range = [5*k for k in range(-2,2)]
-		# for t0 in theta_range:
-		# 	for t1 in theta_range:
-		# 		for t2 in theta_range:
-		# 			#set the angles
-		# 			t0 = t0/180.0*pi
-		# 			t1 = t1/180.0*pi
-		# 			t2 = t2/180.0*pi
-		# 			setRigidJoints2(rigid_joints, revolute_joints, user_angles, [t0, t1, t2])
-		# 			#calc mobile platform position
-		# 			cur_xyzs = [mobilePlatform.transform.translation.x, mobilePlatform.transform.translation.y, mobilePlatform.transform.translation.x]
-		# 			xyzs.append(cur_xyzs)
-		# 			thetas.append([t0, t1, t2])
-		# 			#now move by dtheta in each axis
-		# 			setRigidJoints2(rigid_joints, revolute_joints, user_angles, [t0+dtheta, t1+dtheta, t2+dtheta])
-		# 			nxyzs = [mobilePlatform.transform.translation.x, mobilePlatform.transform.translation.y, mobilePlatform.transform.translation.x]
-		# 			dxyzs.append(list(map(operator.sub, nxyzs, cur_xyzs)))
-		# 			dthetas.append(dtheta)
+		theta_range = [5*k for k in range(-10,11)]
+		start_time = time.time()
+		for t0 in theta_range:
+			for t1 in theta_range:
+				for t2 in theta_range:
+					#set the angles
+					t0 = t0/180.0*pi
+					t1 = t1/180.0*pi
+					t2 = t2/180.0*pi
+					# setRigidJoints2(rigid_joints, revolute_joints, user_angles, [t0, t1, t2])
+					setRevoluteJoints_locked(revolute_joints, [t0,t1,t1])
+					#calc mobile platform position
+					cur_xyzs = [mobilePlatform.transform.translation.x, mobilePlatform.transform.translation.y, mobilePlatform.transform.translation.x]
+					xyzs.append(cur_xyzs)
+					thetas.append([t0, t1, t2])
+					#now move by dtheta in each axis
+					# setRigidJoints2(rigid_joints, revolute_joints, user_angles, [t0+dtheta, t1+dtheta, t2+dtheta])
+					setRevoluteJoints_locked(revolute_joints, [t0+dtheta, t1+dtheta, t2+dtheta])
+					nxyzs = [mobilePlatform.transform.translation.x, mobilePlatform.transform.translation.y, mobilePlatform.transform.translation.x]
+					dxyzs.append(list(map(operator.sub, nxyzs, cur_xyzs)))
+					dthetas.append(dtheta)
+
+
+
+		stop_time = time.time()
+		delta_time = stop_time - start_time
+
+		###########TEST###########
+		# start_time = time.time()
+		# test_len = 101
+		# for k in range(test_len):
+		# 	testSuppress(rigid_joints)
+		# stop_time = time.time()
+		# delta_time = stop_time-start_time
+		###########TEST###########
+
+
 
 
 
@@ -277,7 +323,8 @@ def run(context):
 		# thetas = [[pi*random.randint(-50,50)/180.0, pi*random.randint(-50,50)/180.0, pi*random.randint(-50,50)/180.0 ] for k in range(test_len)]
 		# start_time = time.time()
 		# for vals in thetas:
-		# 	setRigidJoints3(rigid_joints, revolute_joints, user_angles, vals)
+		# 	# setRigidJoints3(rigid_joints, revolute_joints, user_angles, vals)
+		# 	setRevoluteJoints_locked(revolute_joints, vals)
 		# stop_time = time.time()
 
 		# delta_time = stop_time-start_time
@@ -307,6 +354,7 @@ def run(context):
 		##########************###########
 		mydata={'thetas':thetas, 'xyzs':xyzs, 'dthetas':dthetas, 'dxyzs':dxyzs}
 		write2json(jsonFullPath, mydata)
+		print(delta_time)
 		##########************###########
 
 #		forCSV = [xyzs, dxyzs, dthetas]
