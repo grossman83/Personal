@@ -30,12 +30,14 @@ def import_json(fullPath):
 
 if __name__ == '__main__':
 	# fullPath = os.path.join(os.path.expanduser('~'), 'Documents','Output4.csv')
-	fullPath = os.path.join(os.path.expanduser('~'), 'Documents','data5.json')
+	fullPath = os.path.join(os.path.expanduser('~'), 'Documents','data7.json')
 
 	# blah = readCSV(fullPath)
 	data = import_json(fullPath)
 	# pdb.set_trace()
 	xyzs = data['xyzs']
+	data_shape = np.shape(xyzs)
+	xxyyzzs = np.reshape(xyzs, (data_shape[0]*data_shape[1], data_shape[2]))
 	thetas = data['thetas']
 	# xyzs = [eval(k[1]) for k in blah]
 	# thetas = [eval(k[0]) for k in blah]
@@ -43,13 +45,13 @@ if __name__ == '__main__':
 
 	# x2, y2, z2 = np.random.multivariate_normal(np.array([0,0,0]), np.eye(3), 200).transpose()
 	trace0 = go.Scatter3d(
-		x=[k[0] for k in xyzs],
-		y=[k[1] for k in xyzs],
-		z=[k[2] for k in xyzs],
+		x=[k[0] for k in xxyyzzs],
+		y=[k[1] for k in xxyyzzs],
+		z=[k[2] for k in xxyyzzs],
 		mode='markers',
 		marker=dict(
 			color='rgb(127, 127, 127)',
-			size=5,
+			size=2,
 			symbol='circle',
 			line=dict(
 				color='rgb(204, 204, 204)',
