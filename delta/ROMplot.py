@@ -30,7 +30,7 @@ def import_json(fullPath):
 
 if __name__ == '__main__':
 	# fullPath = os.path.join(os.path.expanduser('~'), 'Documents','Output4.csv')
-	fullPath = os.path.join(os.path.expanduser('~'), 'Documents','data7.json')
+	fullPath = os.path.join(os.path.expanduser('~'), 'Documents','data8.json')
 
 	# blah = readCSV(fullPath)
 	data = import_json(fullPath)
