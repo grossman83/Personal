@@ -242,10 +242,10 @@ def run(context):
 		thetas = []
 #		dthetas = []
 #		dxyzs = []
-		theta_range0 = [10.0*k for k in range(-3,1)]
+		theta_range0 = [10.0*k for k in range(-5,6)]
 		theta_range0 = [k*pi/180 for k in theta_range0]
 
-		theta_range1 = [10.0*k for k in range(-3,1)]
+		theta_range1 = [10.0*k for k in range(-5,6)]
 		theta_range1 = [k*pi/180 for k in theta_range1]
 
 		theta_range2 = [3.0*k for k in range(-20,21)]
