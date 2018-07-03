@@ -2,6 +2,12 @@
 Thumbs.db
 ehthumbs.db
 
+
+#Other files
+Fusion/core.py
+Fusion/fusion.py
+
+
 # Folder config file
 Desktop.ini
 
