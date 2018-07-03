@@ -22,6 +22,12 @@ design = app.activeProduct
 # user_joint1_angle = design.userParameters.itemByName('j1_angle')
 # user_joint2_angle = design.userParameters.itemByName('j2_angle')
 
+#initialize global parameters
+driven_arm_0_length = design.userParameters.itemByName('driven_arm_length').value#cm
+driven_arm_1_length = design.userParameters.itemByName('driven_arm_length').value#cm
+driven_arm_2_length = design.userParameters.itemByName('off_axis_driven_arm_length').value#cm
+driven_arm_lengths = [driven_arm_0_length, driven_arm_1_length, driven_arm_2_length]
+
 
 def getDist2Origin(component):
 	try:
@@ -40,92 +46,6 @@ def write2json(filePath, data):
 #[k*180/pi for k in thetas]
 #[rev2abs(idx, k.jointMotion.rotationValue)*180/pi for idx, k in enumerate(revolute_joints)]
 #[rigid2abs(idx, k.angle.value)*180/pi for idx, k in enumerate(rigid_joints)]
-
-
-
-
-
-def setRigidJoints(rigid_joints, revolute_joints, thetas):
-	#sets all the joints to the angles(rad) specified in thetas (absolute space)
-	#does so by suppressing the rigid joint counterparts to each revolute joint
-	#the moves the revolute joint to the specified angle
-	#changes the rigid joint angle to match
-	#unsuppresses the rigid joint
-	#this performs no locking/unlocking of the revolute joints
-	try:	
-		#set the revolute joints to equal the rigid ones to start things off.
-		for idx in range(len(rigid_joints)):
-			revolute_joints[idx].jointMotion.rotationValue = rigid2rev(idx, rigid_joints[idx].angle.value)
-			adsk.doEvents()
-
-
-
-		# for t_idx in zip(thetas, range(len(thetas))):
-		for idx, theta in enumerate(thetas):
-			if not math.isclose(rigid_joints[idx].angle.value, abs2rigid(idx, theta), abs_tol = 0.00001):
-				#current rigid angle not equal to desired angle... free the joint then drive the revolute
-				rigid_joints[idx].isSuppressed = True
-				current_theta = revolute_joints[idx].jointMotion.rotationValue
-				desired_theta = abs2rev(idx, theta)
-				positive_move = (desired_theta > current_theta)
-				step_size = 10.0/180.0*pi
-				numsteps = math.ceil(abs(desired_theta - current_theta)/(step_size))
-				if numsteps > 1:
-					if positive_move:
-						#create list of positions to step through
-						step_thetas = [k*step_size + current_theta for k in range(numsteps)]
-						for stp in step_thetas:
-							revolute_joints[idx].jointMotion.rotationValue = stp
-							adsk.doEvents()
-					else:#negative move
-						step_thetas = [-1.0*k*step_size + current_theta for k in range(numsteps)]
-						for stp in step_thetas:
-							revolute_joints[idx].jointMotion.rotationValue = stp
-							adsk.doEvents()
-				
-				#finish the move with one final step since range doesn't got to endpoint
-				revolute_joints[idx].jointMotion.rotationValue = abs2rev(idx, theta)
-				adsk.doEvents()
-				rigid_joints[idx].angle.value = abs2rigid(idx, theta)
-				adsk.doEvents()
-				rigid_joints[idx].isSuppressed = False
-				adsk.doEvents()
-	except:
-		if ui:
-			ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))
-
-def setRevoluteJoints_locked(revolute_joints, thetas):
-	#successively unlocks, then moves any joint that is not set to the angle desired by thetas
-	#NOTES:
-	#did not work correctly without both adsk.doEvents() commands at the end
-	#does appear to work with the doEvents() after locking and unlocking commented out
-	for idx, joint in enumerate(revolute_joints):
-		if joint.jointMotion.rotationValue != thetas[idx]:
-			joint.isLocked = False
-			# adsk.doEvents()
-			joint.jointMotion.rotationValue = thetas[idx]
-			# adsk.doEvents()
-			joint.isLocked = True
-			# adsk.doEvents()
-	adsk.doEvents()
-	adsk.doEvents()
-
-#test script
-# desired_thetas, measured_thetas = test_setRevoluteJoints_locked(revolute_joints)
-# [list(map(operator.sub, k[0],k[1])) for k in zip(desired_thetas, measured_thetas)]
-def test_setRevoluteJoints_locked(revolute_joints):
-	#move randomly between -60, and 60
-	desired_thetas = []
-	measured_thetas = []
-	for k in range(60):
-		rand_angles = [random.randint(-60,60) for k in range(3)]
-		thetas = [k*pi/180 for k in rand_angles]
-		desired_thetas.append(thetas)
-		setRevoluteJoints_locked(revolute_joints, [abs2rev(idx,k) for idx,k in enumerate(thetas)])
-		measured_thetas.append([rev2abs(idx, j.jointMotion.rotationValue) for idx,j in enumerate(revolute_joints)])
-
-	return desired_thetas, measured_thetas
-
 
 
 
@@ -194,6 +114,133 @@ def rev2abs(idx, theta):
 	except:
 		if ui:
 			ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))
+
+
+
+
+def setRigidJoints(rigid_joints, revolute_joints, thetas):
+	#sets all the joints to the angles(rad) specified in thetas (absolute space)
+	#does so by suppressing the rigid joint counterparts to each revolute joint
+	#the moves the revolute joint to the specified angle
+	#changes the rigid joint angle to match
+	#unsuppresses the rigid joint
+	#this performs no locking/unlocking of the revolute joints
+	try:	
+		#set the revolute joints to equal the rigid ones to start things off.
+		for idx in range(len(rigid_joints)):
+			revolute_joints[idx].jointMotion.rotationValue = rigid2rev(idx, rigid_joints[idx].angle.value)
+			adsk.doEvents()
+
+
+
+		# for t_idx in zip(thetas, range(len(thetas))):
+		for idx, theta in enumerate(thetas):
+			if not math.isclose(rigid_joints[idx].angle.value, abs2rigid(idx, theta), abs_tol = 0.00001):
+				#current rigid angle not equal to desired angle... free the joint then drive the revolute
+				rigid_joints[idx].isSuppressed = True
+				current_theta = revolute_joints[idx].jointMotion.rotationValue
+				desired_theta = abs2rev(idx, theta)
+				positive_move = (desired_theta > current_theta)
+				step_size = 10.0/180.0*pi
+				numsteps = math.ceil(abs(desired_theta - current_theta)/(step_size))
+				if numsteps > 1:
+					if positive_move:
+						#create list of positions to step through
+						step_thetas = [k*step_size + current_theta for k in range(numsteps)]
+						for stp in step_thetas:
+							revolute_joints[idx].jointMotion.rotationValue = stp
+							adsk.doEvents()
+					else:#negative move
+						step_thetas = [-1.0*k*step_size + current_theta for k in range(numsteps)]
+						for stp in step_thetas:
+							revolute_joints[idx].jointMotion.rotationValue = stp
+							adsk.doEvents()
+				
+				#finish the move with one final step since range doesn't got to endpoint
+				revolute_joints[idx].jointMotion.rotationValue = abs2rev(idx, theta)
+				adsk.doEvents()
+				rigid_joints[idx].angle.value = abs2rigid(idx, theta)
+				adsk.doEvents()
+				rigid_joints[idx].isSuppressed = False
+				adsk.doEvents()
+	except:
+		if ui:
+			ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))
+
+def setRevoluteJoints_locked(revolute_joints, thetas):
+	#successively unlocks, then moves any joint that is not set to the angle desired by thetas
+	#NOTES:
+	#did not work correctly without both adsk.doEvents() commands at the end
+	#does appear to work with the doEvents() after locking and unlocking commented out
+	# setRevoluteJoints_locked(revolute_joints, [abs2rev(idx, k*pi/180) for idx,k in enumerate([20,20,20])])
+	for idx, joint in enumerate(revolute_joints):
+		if joint.jointMotion.rotationValue != thetas[idx]:
+			joint.isLocked = False
+			# adsk.doEvents()
+			joint.jointMotion.rotationValue = thetas[idx]
+			# adsk.doEvents()
+			joint.isLocked = True
+			# adsk.doEvents()
+	adsk.doEvents()
+	adsk.doEvents()
+
+#test script
+# desired_thetas, measured_thetas = test_setRevoluteJoints_locked(revolute_joints)
+# [list(map(operator.sub, k[0],k[1])) for k in zip(desired_thetas, measured_thetas)]
+def test_setRevoluteJoints_locked(revolute_joints):
+	#move randomly between -60, and 60
+	desired_thetas = []
+	measured_thetas = []
+	for k in range(60):
+		rand_angles = [random.randint(-60,60) for k in range(3)]
+		thetas = [k*pi/180 for k in rand_angles]
+		desired_thetas.append(thetas)
+		setRevoluteJoints_locked(revolute_joints, [abs2rev(idx,k) for idx,k in enumerate(thetas)])
+		measured_thetas.append([rev2abs(idx, j.jointMotion.rotationValue) for idx,j in enumerate(revolute_joints)])
+
+	return desired_thetas, measured_thetas
+
+def sweepJoint_locked(joint_id, revolute_joints, thetas, mobilePlatform):
+	try:
+		xyzs = []
+		angles = []
+		for theta in thetas:
+			revolute_joints[joint_id].isLocked = False
+			adsk.doEvents()
+
+
+
+	except:
+		if ui:
+			ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))
+
+def get_dXYZ_dTheta(revolute_joints, mobilePlatform):
+	#returns the norm of the distance between points closely spaced in theta space
+	try:	
+		dtheta = 0.001 #1mrad
+		#get current positions
+		orig_thetas = [j.jointMotion.rotationValue for j in revolute_joints]
+		orig_pos = getDist2Origin(mobilePlatform)
+		dxyzs = []
+
+		for k in range(len(revolute_joints)):
+			dthetas = [0.0,0.0,0.0]
+			dthetas[k] = dtheta
+			setRevoluteJoints_locked(revolute_joints, [k[0]+k[1] for k in zip(orig_thetas, dthetas)])
+			cur_pos = getDist2Origin(mobilePlatform)
+			dxyz = math.sqrt(math.fsum([(k[1]-k[0])**2 for k in zip(orig_pos, cur_pos)]))
+			corrected_dxyz = dxyz/(driven_arm_lengths[k]*dtheta)
+			dxyzs.append(corrected_dxyz)
+			setRevoluteJoints_locked(revolute_joints, orig_thetas)
+		return dxyzs
+
+
+	except:
+		if ui:
+			ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))
+
+
+
 
 
 def sweepJoint(joint_id, rigid_joints, revolute_joints, thetas, mobilePlatform):
@@ -278,6 +325,11 @@ def run(context):
 		theta_range2 = [k*pi/180 for k in theta_range2]
 		dtheta_range2 = [k+0.0001 for k in theta_range2]
 		start_time = time.time()
+		test_setRevoluteJoints_locked(revolute_joints)
+		stop_time = time.time()
+		run_time = stop_time - start_time
+
+
 
 
 		loop_count = 0
