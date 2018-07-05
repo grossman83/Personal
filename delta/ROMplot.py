@@ -26,18 +26,17 @@ def import_json(fullPath):
 	return data
 
 
-
 if __name__ == '__main__':
 	# fullPath = os.path.join(os.path.expanduser('~'), 'Documents','Output4.csv')
-	fullPath = os.path.join(os.path.expanduser('~'), 'Documents','data14.json')
+	fullPath = os.path.join(os.path.expanduser('~'), 'Documents','data22.json')
 
 	# blah = readCSV(fullPath)
 	data = import_json(fullPath)
 	# pdb.set_trace()
-	xyzs = data['xyzs']
+	xyzs = data['xyzs2']
 	data_shape = np.shape(xyzs)
 	xxyyzzs = np.reshape(xyzs, (data_shape[0]*data_shape[1], data_shape[2]))
-	thetas = data['thetas']
+	# thetas = data['thetas']
 	# xyzs = [eval(k[1]) for k in blah]
 	# thetas = [eval(k[0]) for k in blah]
 	# pdb.set_trace()

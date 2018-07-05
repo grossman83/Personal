@@ -18,6 +18,13 @@
 ###########TEST###########
 
 
+##########TEST##############
+		# start_time = time.time()
+		# test_setRevoluteJoints_locked(revolute_joints)
+		# stop_time = time.time()
+		# run_time = stop_time - start_time
+##########TEST##############
+
 
 
 
