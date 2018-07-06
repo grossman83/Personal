@@ -33,7 +33,7 @@ if __name__ == '__main__':
 	# blah = readCSV(fullPath)
 	data = import_json(fullPath)
 	# pdb.set_trace()
-	xyzs = data['xyzs2']
+	xyzs = data['xyzs']
 	data_shape = np.shape(xyzs)
 	xxyyzzs = np.reshape(xyzs, (data_shape[0]*data_shape[1], data_shape[2]))
 	# thetas = data['thetas']
@@ -75,8 +75,10 @@ if __name__ == '__main__':
 
 	else:
 		#plot locally using matplotlib
+		import matplotlib as mpl
 		from mpl_toolkits.mplot3d import Axes3D
 		import matplotlib.pyplot as plt
+		mpl.use('TkAgg')
 
 		xs = [k[0] for k in xxyyzzs]
 		ys = [k[1] for k in xxyyzzs]

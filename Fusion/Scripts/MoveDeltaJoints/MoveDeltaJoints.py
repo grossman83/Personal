@@ -12,7 +12,7 @@ xyzs = []
 
 rootPath = os.path.expanduser('~')
 fullPath = os.path.join(rootPath, 'Documents', 'output3.csv')
-jsonFullPath = 'Documents/data23.json'
+jsonFullPath = 'Documents/data3.json'
 
 app = adsk.core.Application.get()
 ui = app.userInterface
@@ -35,6 +35,8 @@ dtheta = 0.001#1mrad
 
 
 def getDist2Origin(component):
+	#Returns the distance between the origin of the component passed in
+	#and the root component origin. All distances in cm as per Fusion standards.
 	try:
 		trans = component.transform.translation
 		return [trans.x,trans.y,trans.z]
@@ -47,7 +49,12 @@ def write2json(filePath, data):
 		# json.dump(data, fp)
 		json.dump(data, fp, sort_keys=True, indent=4, separators=(',', ': '))
 
+
 def abs2rev(theta):
+	#the angles of the joints are thought of as + - 60-90 degrees above and
+	#below the horizontal. this converts them to how the joint is setup which
+	#is between 0 and 180. The reason for this is that fusion does not handle
+	#well joints that pass through the 0/360 degree point.
 	return theta + pi/2
 
 def rev2abs(theta):
@@ -88,6 +95,12 @@ def test_setRevoluteJoints(revolute_joints):
 	return desired_thetas, measured_thetas
 
 def sweep_joint(joint_id, revolute_joints, thetas, mobilePlatform):
+	#this performs a sweep which is much faster than setting individual angles.
+	#It takes in the joint_id that is goign to be swept as an index of it's
+	#position in the list of joints revolute_joints. It then takes in list of
+	#angles over which to sweep that joint. At each position swept through it
+	#logs the angles of all the joints as well as the cartesian position
+	#of the mobile platform relative to the root component origin.
 	try:
 		xyzs = []
 		angles = []
@@ -95,7 +108,6 @@ def sweep_joint(joint_id, revolute_joints, thetas, mobilePlatform):
 		adsk.doEvents()
 		for theta in thetas:
 			revolute_joints[joint_id].jointMotion.rotationValue = abs2rev(theta)
-			# temp_angles = [rev2abs(idx, j.jointMotion.rotationValue) for idx,j in enumerate(revolute_joints)]
 			temp_angles = [rev2abs(j.jointMotion.rotationValue) for j in revolute_joints]
 			temp_angles[joint_id] = theta
 			angles.append(temp_angles)
@@ -150,10 +162,10 @@ def run(context):
 		#joint origin of off-axis revolute joint
 		off_axis_joint_origin = rootComp.jointOrigins.itemByName('off_axis_joint_origin')
 		off_axis_joint_Xdist = off_axis_joint_origin.offsetX.value
+		off_axis_joint_Ydist = off_axis_joint_origin.offsetY.value
 		off_axis_joint_Zdist = off_axis_joint_origin.offsetZ.value
 
 
-		#revolute_joints = [rootComp.joints.itemByName('Shoulder0_Revolute'), rootComp.joints.itemByName('Shoulder1_Revolute'), rootComp.joints.itemByName('Shoulder2_Revolute')]
 		rev0 = rootComp.joints.itemByName('Shoulder0_Revolute')
 		rev1 = rootComp.joints.itemByName('Shoulder1_Revolute')
 		rev2 = rootComp.joints.itemByName('Shoulder2_Revolute')
@@ -167,9 +179,9 @@ def run(context):
 		d_xyzs2 = []
 
 
-		theta0_range = [10.0*k+0.1 for k in range(-3,0)]
+		theta0_range = [10.0*k+0.1 for k in range(-7,8)]
 		theta0_range = [k*pi/180.0 for k in theta0_range]
-		theta1_range = [10.0*k+0.1 for k in range(-3,0)]
+		theta1_range = [10.0*k+0.1 for k in range(-7,8)]
 		theta1_range = [k*pi/180.0 for k in theta1_range]
 
 
@@ -189,7 +201,8 @@ def run(context):
 				thetas.append(angles)
 
 
-				#now make minor adjustment to the thetas and redo the sweep to get dt1/norm(dxdydz)
+				#now make minor adjustment to the thetas and redo the sweep to get
+				#dtheta / norm(dxyz) for each of the three axes.
 				setRevoluteJoints(revolute_joints, [t0+dtheta, t1, theta2_range[0]])
 				_angles, _xyzs = sweep_joint(2, revolute_joints, theta2_range, mobilePlatform)
 				_norms = get_norms(sweep_xyzs, _xyzs)
@@ -209,19 +222,7 @@ def run(context):
 				d_xyzs2.append([dtheta_l/k for k in _norms])
 
 
-		# stop_time = time.time()
-		# delta_time = stop_time - start_time
 
-
-
-		##########************###########
-		# mydata={'thetas':thetas, 'xyzs':xyzs, 'dthetas':dthetas, 'dxyzs':dxyzs}
-		# mydata={
-		# 'thetas0':thetas0, 'xyzs0':xyzs0, 'd_thetas0':d_thetas0, 'd_xyzs0':d_xyzs0,
-		# 'thetas1':thetas1, 'xyzs1':xyzs1, 'd_thetas1':d_thetas1, 'd_xyzs1':d_xyzs1,
-		# 'thetas2':thetas2, 'xyzs2':xyzs2, 'd_thetas2':d_thetas2, 'd_xyzs2':d_xyzs2}
-		# mydata={
-		# 'thetas0':thetas0, 'xyzs0':xyzs0, 'd_thetas0':d_thetas0, 'd_xyzs0':d_xyzs0}
 		stop_time = time.time()
 		delta_time = stop_time - start_time
 
@@ -230,7 +231,7 @@ def run(context):
 		'free_arm_lenghts': free_arm_lenghts,
 		'parallel_axes_dist': parallel_axes_dist,
 		'driven_arm_lengths': driven_arm_lengths,
-		'off_axis_joint_position': [0, off_axis_joint_Xdist, off_axis_joint_Zdist],
+		'off_axis_joint_position': [off_axis_joint_Xdist, off_axis_joint_Ydist, off_axis_joint_Zdist],
 		'simDuration': delta_time}
 		
 		write2json(jsonFullPath, simdata)
