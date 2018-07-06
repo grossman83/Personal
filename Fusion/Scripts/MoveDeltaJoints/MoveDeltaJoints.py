@@ -1,4 +1,4 @@
-import adsk.core, adsk.fusion, traceback, math, copy
+import adsk.core, adsk.fusion, traceback, math, copy, operator
 import random
 import os
 import json
@@ -19,7 +19,6 @@ ui = app.userInterface
 design = app.activeProduct
 
 
-
 #initialize global parameters
 driven_arm_0_length = design.userParameters.itemByName('driven_arm_length').value#cm
 driven_arm_1_length = design.userParameters.itemByName('driven_arm_length').value#cm
@@ -28,8 +27,11 @@ driven_arm_lengths = [driven_arm_0_length, driven_arm_1_length, driven_arm_2_len
 parallel_axes_dist = design.userParameters.itemByName('parallel_axes_dist').value
 free_arm_length = design.userParameters.itemByName('free_arm_length').value
 off_axis_free_arm_length = design.userParameters.itemByName('off_axis_free_arm_length').value
-off_axis_z_offset = -1.0 * design.userParameters.itemByName('off_axis_z_offset').value
+free_arm_lenghts = [free_arm_length, free_arm_length, off_axis_free_arm_length]
 
+
+#constants
+dtheta = 0.001#1mrad
 
 
 def getDist2Origin(component):
@@ -45,13 +47,11 @@ def write2json(filePath, data):
 		# json.dump(data, fp)
 		json.dump(data, fp, sort_keys=True, indent=4, separators=(',', ': '))
 
-
 def abs2rev(theta):
 	return theta + pi/2
 
 def rev2abs(theta):
 	return theta - pi/2
-
 
 def setRevoluteJoints(revolute_joints, thetas):
 	#successively unlocks, then moves any joint that is not set to the angle desired by thetas
@@ -60,9 +60,9 @@ def setRevoluteJoints(revolute_joints, thetas):
 	#does appear to work with the doEvents() after locking and unlocking commented out
 	try:
 		for idx, joint in enumerate(revolute_joints):
-			if joint.jointMotion.rotationValue != thetas[idx]:
+			if joint.jointMotion.rotationValue != abs2rev(thetas[idx]):
 				joint.isLocked = False
-				joint.jointMotion.rotationValue = thetas[idx]
+				joint.jointMotion.rotationValue = abs2rev(thetas[idx])
 				joint.isLocked = True
 		adsk.doEvents()
 		adsk.doEvents()
@@ -82,14 +82,12 @@ def test_setRevoluteJoints(revolute_joints):
 		rand_angles = [random.randint(-60,60) for k in range(3)]
 		thetas = [k*pi/180 for k in rand_angles]
 		desired_thetas.append(thetas)
-		# setRevoluteJoints(revolute_joints, [abs2rev(idx,k) for idx,k in enumerate(thetas)])
-		setRevoluteJoints(revolute_joints, [abs2rev(k) for k in thetas])
-		# measured_thetas.append([rev2abs(idx, j.jointMotion.rotationValue) for idx,j in enumerate(revolute_joints)])
+		setRevoluteJoints(revolute_joints, thetas)
 		measured_thetas.append([rev2abs(j.jointMotion.rotationValue) for j in revolute_joints])
 
 	return desired_thetas, measured_thetas
 
-def sweepJoint_locked(joint_id, revolute_joints, thetas, mobilePlatform):
+def sweep_joint(joint_id, revolute_joints, thetas, mobilePlatform):
 	try:
 		xyzs = []
 		angles = []
@@ -136,64 +134,83 @@ def get_dXYZ_dTheta(revolute_joints, mobilePlatform):
 			ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))
 
 
+def get_norms(lol_1, lol_2):
+	#takes two lists of lists and performs the list-wise norms returning them
+	norms = []
+	for k in zip(lol_1, lol_2):
+		norms.append(math.sqrt(math.fsum([(kk[1]-kk[0])**2 for kk in zip(k[0], k[1])])))
+	return norms
+
+
 def run(context):
 	try:
 		rootComp = app.activeProduct.rootComponent
 		mobilePlatform = rootComp.occurrences.itemByName('Mobile_Platform:1')
 
+		#joint origin of off-axis revolute joint
+		off_axis_joint_origin = rootComp.jointOrigins.itemByName('off_axis_joint_origin')
+		off_axis_joint_Xdist = off_axis_joint_origin.offsetX.value
+		off_axis_joint_Zdist = off_axis_joint_origin.offsetZ.value
+
+
+		#revolute_joints = [rootComp.joints.itemByName('Shoulder0_Revolute'), rootComp.joints.itemByName('Shoulder1_Revolute'), rootComp.joints.itemByName('Shoulder2_Revolute')]
 		rev0 = rootComp.joints.itemByName('Shoulder0_Revolute')
 		rev1 = rootComp.joints.itemByName('Shoulder1_Revolute')
 		rev2 = rootComp.joints.itemByName('Shoulder2_Revolute')
 		revolute_joints = [rev0, rev1, rev2]
 
+		xyzs=[]
+		thetas = []
 
-		#revolute_joints = [rootComp.joints.itemByName('Shoulder0_Revolute'), rootComp.joints.itemByName('Shoulder1_Revolute'), rootComp.joints.itemByName('Shoulder2_Revolute')]
-
-		# xyzs = []
-		# thetas = []
-		xyzs0=[]
 		d_xyzs0 = []
-		thetas0 = []
-		d_thetas0 = []
-
-		xyzs1=[]
 		d_xyzs1 = []
-		thetas1 = []
-		d_thetas1 = []
-
-		xyzs2=[]
 		d_xyzs2 = []
-		thetas2 = []
-		d_thetas2 = []
-#		dthetas = []
-#		dxyzs = []
-		theta_range0 = [10.0*k for k in range(-3,4)]
-		theta_range0 = [k*pi/180 for k in theta_range0]
 
-		theta_range1 = [10.0*k for k in range(-3,4)]
-		theta_range1 = [k*pi/180 for k in theta_range1]
 
-		theta_range2 = [5.0*k+0.1 for k in range(-15,16)]
-		theta_range2 = [k*pi/180 for k in theta_range2]
-		dtheta_range2 = [k+0.0001 for k in theta_range2]
+		theta0_range = [10.0*k+0.1 for k in range(-3,0)]
+		theta0_range = [k*pi/180.0 for k in theta0_range]
+		theta1_range = [10.0*k+0.1 for k in range(-3,0)]
+		theta1_range = [k*pi/180.0 for k in theta1_range]
+
+
+		theta2_range = [5.0*k+0.1 for k in range(-15,16)]
+		theta2_range = [k*pi/180 for k in theta2_range]
 		
 
 		loop_count = 0
 		start_time = time.time()
-		for t0 in theta_range0:
-			for t1 in theta_range1:
-				setRevoluteJoints(revolute_joints, [t0, t1, theta_range2[0]])
+		for t0 in theta0_range:
+			for t1 in theta1_range:
+				#set starting positions for all joints
+				setRevoluteJoints(revolute_joints, [t0, t1, theta2_range[0]])
 				#perform the sweep
-				angles2, sweep_xyzs2 = sweepJoint_locked(2, revolute_joints, theta_range2, mobilePlatform)
-				xyzs2.append(sweep_xyzs2)
-				# d_xyzs2.append(dsweep_xyzs2)
-				thetas2.append(angles2)
-				# d_thetas2.append(dangles2)
-				# loop_count = loop_count+1
-				# print(loop_count/numloops)
+				angles, sweep_xyzs = sweep_joint(2, revolute_joints, theta2_range, mobilePlatform)
+				xyzs.append(sweep_xyzs)
+				thetas.append(angles)
 
-		stop_time = time.time()
-		delta_time = stop_time - start_time
+
+				#now make minor adjustment to the thetas and redo the sweep to get dt1/norm(dxdydz)
+				setRevoluteJoints(revolute_joints, [t0+dtheta, t1, theta2_range[0]])
+				_angles, _xyzs = sweep_joint(2, revolute_joints, theta2_range, mobilePlatform)
+				_norms = get_norms(sweep_xyzs, _xyzs)
+				dtheta_l = dtheta*driven_arm_lengths[0]
+				d_xyzs0.append([dtheta_l/k for k in _norms])
+
+				setRevoluteJoints(revolute_joints, [t0, t1+dtheta, theta2_range[0]])
+				_angles, _xyzs = sweep_joint(2, revolute_joints, theta2_range, mobilePlatform)
+				_norms = get_norms(sweep_xyzs, _xyzs)
+				dtheta_l = dtheta*driven_arm_lengths[1]
+				d_xyzs1.append([dtheta_l/k for k in _norms])
+
+				setRevoluteJoints(revolute_joints, [t0, t1, theta2_range[0]])
+				_angles, _xyzs = sweep_joint(2, revolute_joints, [k+dtheta for k in theta2_range], mobilePlatform)
+				_norms = get_norms(sweep_xyzs, _xyzs)
+				dtheta_l = dtheta*driven_arm_lengths[2]
+				d_xyzs2.append([dtheta_l/k for k in _norms])
+
+
+		# stop_time = time.time()
+		# delta_time = stop_time - start_time
 
 
 
@@ -205,8 +222,18 @@ def run(context):
 		# 'thetas2':thetas2, 'xyzs2':xyzs2, 'd_thetas2':d_thetas2, 'd_xyzs2':d_xyzs2}
 		# mydata={
 		# 'thetas0':thetas0, 'xyzs0':xyzs0, 'd_thetas0':d_thetas0, 'd_xyzs0':d_xyzs0}
-		mydata = {'xyzs2':xyzs2, 'angles2':angles2}
-		write2json(jsonFullPath, mydata)
+		stop_time = time.time()
+		delta_time = stop_time - start_time
+
+		simdata = {'xyzs':xyzs, 'angles':angles, 'd_xyzs0':d_xyzs0, 'd_xyzs1':d_xyzs1, 'd_xyzs2':d_xyzs2,
+		'driven_arm_lengths': driven_arm_lengths,
+		'free_arm_lenghts': free_arm_lenghts,
+		'parallel_axes_dist': parallel_axes_dist,
+		'driven_arm_lengths': driven_arm_lengths,
+		'off_axis_joint_position': [0, off_axis_joint_Xdist, off_axis_joint_Zdist],
+		'simDuration': delta_time}
+		
+		write2json(jsonFullPath, simdata)
 		print(delta_time)
 		##########************###########
 
