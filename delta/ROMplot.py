@@ -28,7 +28,7 @@ def import_json(fullPath):
 
 if __name__ == '__main__':
 	# fullPath = os.path.join(os.path.expanduser('~'), 'Documents','Output4.csv')
-	fullPath = os.path.join(os.path.expanduser('~'), 'Documents', 'Simulation Results', 'data1.json')
+	fullPath = os.path.join(os.path.expanduser('~'), 'Documents', 'Simulation Results', '2R1L_data1.json')
 
 	# blah = readCSV(fullPath)
 	data = import_json(fullPath)
@@ -45,12 +45,17 @@ if __name__ == '__main__':
 	#get the median values of each set of ratios
 
 	ratio = 5.0
-	medians = []
-	for dd in [dxyz0, dxyz1, dxyz2]:
-		medians.append(np.median(np.reshape(dd, (np.shape(dd)[0], np.shape(dd)[1]))))
+	dtheata_median = []
+	for dd in [dxyz0, dxyz1]:
+		dtheata_median.append(np.median(np.reshape(dd, (np.shape(dd)[0], np.shape(dd)[1]))))
 
-	upper_ratios = [k * np.sqrt(ratio) for k in medians]
-	lower_ratios = [k / np.sqrt(ratio) for k in medians]
+	dlinear_median = []
+	for dd in [dxyz2]:
+		dlinear_median.append(np.median(np.reshape(dd, (np.shape(dd)[0], np.shape(dd)[1]))))
+
+
+	upper_ratios = [k * np.sqrt(ratio) for k in dtheata_median]
+	lower_ratios = [k / np.sqrt(ratio) for k in dtheata_median]
 	
 
 
