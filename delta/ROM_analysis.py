@@ -6,6 +6,7 @@ import pdb
 import time
 import sys
 import itertools
+import scipy.interpolate
 
 
 
@@ -118,11 +119,66 @@ def voxels_filled(voxel_centers, voxel_pitch, pts):
 			return False
 		rem_pts = rem_pts[y_pts]
 
-		x_pts = any(rem_pts[:,0] < vc[0] + voxel_pitch/2.0) and any(rem_pts[:,0] > vc[0] - voxel_pitch/2.0)
-		if not x_pts:
+		x_pts = (rem_pts[:,0] < vc[0] + voxel_pitch/2.0) & (rem_pts[:,0] > vc[0] - voxel_pitch/2.0)
+		if not any(x_pts):
 			return False
 
 	return True
+
+
+def get_irreg_voxel_centers(box_center, box_extents, factor):
+	#returns box centers that are at the center of the irregular
+	#"voxels" that split the original box into factor**3 smaller
+	#"voxels"
+	v_edge_lens = box_extents / (factor-1)
+
+	new_box_centers = [[box_center[j] - box_extents[j]/2.0 + k * v_edge_lens[j] for k in range(factor)] for j in range(3)]
+	xs, ys, zs = new_box_centers
+
+	new_box_centers = np.array([[x,y,z] for x in xs for y in ys for z in zs])
+
+	sub_box_pitches = np.array(box_extents)/factor
+
+	return new_box_centers, sub_box_pitches
+
+
+
+def irreg_voxels_filled(voxel_centers, voxel_pitches, pts):
+	for vc in voxel_centers:
+		# pdb.set_trace()
+		z_pts = (pts[:,2] < vc[2] + voxel_pitches[2]/2.0) & (pts[:,2] > vc[2] - voxel_pitches[2]/2.0)
+		if not any(z_pts):
+			return False
+		rem_pts = pts[z_pts]
+
+		y_pts = (rem_pts[:,1] < vc[1] + voxel_pitches[1]/2.0) & (rem_pts[:,1] > vc[1] - voxel_pitches[1]/2.0)
+		if not any(y_pts):
+			return False
+		rem_pts = rem_pts[y_pts]
+
+		x_pts = (rem_pts[:,0] < vc[0] + voxel_pitches[0]/2.0) & (rem_pts[:,0] > vc[0] - voxel_pitches[0]/2.0)
+		if not any(x_pts):
+			return False
+
+	return True
+
+
+def resample_data(pts, pt_scores, pitch):
+	#get the bounds of the points
+	my_pts = trimesh.points.PointCloud(pts)
+	bounds = my_pts.bounds
+	extents = my_pts.extents
+	num_pts = [int(np.ceil(k / pitch)) for k in extents]
+	xs = np.linspace(bounds[0][0], bounds[1][0], num_pts[0])
+	ys = np.linspace(bounds[0][1], bounds[1][1], num_pts[0])
+	zs = np.linspace(bounds[0][2], bounds[1][2], num_pts[0])
+
+	resampled_pts = np.vstack(np.meshgrid(xs, ys, zs)).reshape(3,-1).T
+	resampled_pt_scores = scipy.interpolate.griddata(pts, pt_scores, resampled_pts, method='linear', fill_value=10000.0)
+
+	return resampled_pts, resampled_pt_scores
+
+
 
 
 
@@ -137,7 +193,7 @@ def display_result_by_idx(idx, box_shapes, voxel_pitch, y_axis_rotations, transl
 	xlated_pts = rotated_pts + translations[idx]
 	my_pts = trimesh.points.PointCloud(xlated_pts)
 	my_scene = trimesh.scene.scene.Scene()
-	# my_scene.add_geometry(box_mesh)
+	my_scene.add_geometry(box_mesh)
 	my_scene.add_geometry(box_mesh_voxelized)
 	my_scene.add_geometry(my_pts)
 	my_scene.show()
@@ -177,46 +233,59 @@ if __name__ == '__main__':
 
 	pts = np.reshape(xyzs, (np.shape(xyzs)[0]*np.shape(xyzs)[1], 3))
 	pts_center = np.median(pts, axis=0)
-	
+	reg_pts, reg_pt_scores = resample_data(pts, pt_scores, 10)
+
+
+
 
 	translations = []
 	box_shapes = []
 	y_axis_rotations = []
 	scores = []
 	start_time = time.time()
-	loops_nums = [5,5,5,5]
+	loops_nums = [8,3,13,9]
 	total_iterations = loops_nums[0]*loops_nums[1]*loops_nums[2]*loops_nums[3]
 	loop_count = 0
 	#create a box of the desired dimensions at the origin
 	#rotate the points by the desired amount about the Y axis.
 	#get the "center" of the point cloud and translate it by that amount to place it at the origin
 	#Perform translations in X and Z of that point cloud and score the results
-	voxel_pitch = 9.99
-	box_len_x = 50
+	voxel_pitch = 11
+	num_divisions = 3
+	box_len_x = 30*in2cm
 	box_len_y = []
-	box_len_z = 40
-	for box_len_y in np.linspace(70, 120, loops_nums[0]):
+	box_len_z = 15*in2cm
+	for box_len_y in np.linspace(50, 60, loops_nums[0]):
 		box_mesh = trimesh.creation.box([box_len_x, box_len_y, box_len_z], np.identity(4))
 		voxel_centers = box_mesh.voxelized(voxel_pitch).points
-		for theta_y in np.linspace(-np.pi/6, np.pi/6, loops_nums[1]):
-			rotated_pts = rotatePts(pts, [0, 1, 0], theta_y)
-			center_of_pts = np.median(rotated_pts, axis=0)
+		sub_voxel_centers, sub_voxel_pitches = get_irreg_voxel_centers(box_mesh.centroid, box_mesh.extents, num_divisions)
+		for theta_y in np.linspace(-np.pi/60, np.pi/60, loops_nums[1]):
+			rotated_pts = rotatePts(reg_pts, [0, 1, 0], theta_y)
+			orig_pts = rotatePts(pts, [0, 1, 0], theta_y)
+			center_of_pts = np.median(orig_pts, axis=0)
 			center_of_pts[2] = center_of_pts[2]*1.5
-			# centered_pts = rotated_pts - center_of_pts
 			for Tx in np.linspace(-60, 60, loops_nums[2]):
 				for Tz in np.linspace(-40, 40, loops_nums[3]):
+					# pdb.set_trace()
+					loop_count+=1
+					update_progress(loop_count/total_iterations)
 					total_translation = np.array([Tx, 0, Tz]) - center_of_pts
 					#translate the points by Tx and Ty
 					xlated_pts = rotated_pts + total_translation
+					orig_pts_xlated = orig_pts + total_translation
+					# reg_pts, reg_pt_scores = resample_data(pts, pt_scores, 10)
 					#check to see that points are within every voxel of the work window mesh
 					if not voxels_filled(voxel_centers, voxel_pitch, xlated_pts):
 						break
-					scores.append(get_mesh_score(box_mesh, xlated_pts, pt_scores))
+					# pdb.set_trace()
+					# if not irreg_voxels_filled(sub_voxel_centers, sub_voxel_pitches, reg_pts):
+					# 	break
+					# scores.append(get_mesh_score(box_mesh, xlated_pts, pt_scores))
+					scores.append(get_mesh_score(box_mesh, xlated_pts, reg_pt_scores))
 					translations.append(total_translation)
 					box_shapes.append([box_len_x, box_len_y, box_len_z])
 					y_axis_rotations.append(theta_y)
-					loop_count+=1
-					update_progress(loop_count/total_iterations)
+					
 
 
 
@@ -231,10 +300,12 @@ if __name__ == '__main__':
 
 
 # my_scene = trimesh.scene.scene.Scene()
-# # my_scene.add_geometry(box_mesh)
-# my_scene.add_geometry(box_mesh.voxelized(20).as_boxes())
+# my_scene.add_geometry(box_mesh)
+# # my_scene.add_geometry(box_mesh.voxelized(20).as_boxes())
 # my_pts = trimesh.points.PointCloud(xlated_pts)
+# my_orig_pts = trimesh.points.PointCloud(orig_pts_xlated)
 # my_scene.add_geometry(my_pts)
+# my_scene.add_geometry(my_orig_pts)
 # my_scene.show()
 
 
@@ -249,7 +320,7 @@ if __name__ == '__main__':
 # xlated_pts = centered_pts + translations[idx]
 # my_pts = trimesh.points.PointCloud(xlated_pts)
 # my_scene = trimesh.scene.scene.Scene()
-# # my_scene.add_geometry(box_mesh)
+# my_scene.add_geometry(box_mesh)
 # my_scene.add_geometry(box_mesh_voxelized)
 # my_scene.add_geometry(my_pts)
 # my_scene.show()
