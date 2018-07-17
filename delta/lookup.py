@@ -128,8 +128,8 @@ if __name__ == '__main__':
 	xyzs = np.array([item for lst in _xyzs for item in lst])
 	angles = np.array([item for lst in _angles for item in lst])
 
-
 	pdb.set_trace()
+	# saveAnglesXYZs2npz(npzpath, angles, xyzs)
 
 	# make the forward lookup table from the irregular data
 	irreg_FLUT = LinearNDInterpolator(angles, xyzs)
