@@ -11,8 +11,8 @@ thetas = []
 xyzs = []
 
 rootPath = os.path.expanduser('~')
-fullPath = os.path.join(rootPath, 'Documents', 'output3.csv')
-jsonFullPath = 'Documents/data3.json'
+fullPath = os.path.join(rootPath, 'Data', 'output3.csv')
+jsonFullPath = 'Documents/data2.json'
 
 app = adsk.core.Application.get()
 ui = app.userInterface
@@ -205,21 +205,24 @@ def run(context):
 				#dtheta / norm(dxyz) for each of the three axes.
 				setRevoluteJoints(revolute_joints, [t0+dtheta, t1, theta2_range[0]])
 				_angles, _xyzs = sweep_joint(2, revolute_joints, theta2_range, mobilePlatform)
-				_norms = get_norms(sweep_xyzs, _xyzs)
-				dtheta_l = dtheta*driven_arm_lengths[0]
-				d_xyzs0.append([dtheta_l/k for k in _norms])
+				# _norms = get_norms(sweep_xyzs, _xyzs)
+				# dtheta_l = dtheta*driven_arm_lengths[0]
+				_dxyzs = [[k[0][0] - k[1][0], k[0][1] - k[1][1], k[0][2]-k[1][2]] for k in zip(_xyzs, sweep_xyzs)]
+				d_xyzs0.append(_dxyzs)
 
 				setRevoluteJoints(revolute_joints, [t0, t1+dtheta, theta2_range[0]])
 				_angles, _xyzs = sweep_joint(2, revolute_joints, theta2_range, mobilePlatform)
-				_norms = get_norms(sweep_xyzs, _xyzs)
-				dtheta_l = dtheta*driven_arm_lengths[1]
-				d_xyzs1.append([dtheta_l/k for k in _norms])
+				# _norms = get_norms(sweep_xyzs, _xyzs)
+				# dtheta_l = dtheta*driven_arm_lengths[1]
+				_dxyzs = [[k[0][0] - k[1][0], k[0][1] - k[1][1], k[0][2]-k[1][2]] for k in zip(_xyzs, sweep_xyzs)]
+				d_xyzs1.append(_dxyzs)
 
 				setRevoluteJoints(revolute_joints, [t0, t1, theta2_range[0]])
 				_angles, _xyzs = sweep_joint(2, revolute_joints, [k+dtheta for k in theta2_range], mobilePlatform)
-				_norms = get_norms(sweep_xyzs, _xyzs)
-				dtheta_l = dtheta*driven_arm_lengths[2]
-				d_xyzs2.append([dtheta_l/k for k in _norms])
+				# _norms = get_norms(sweep_xyzs, _xyzs)
+				# dtheta_l = dtheta*driven_arm_lengths[2]
+				_dxyzs = [[k[0][0] - k[1][0], k[0][1] - k[1][1], k[0][2]-k[1][2]] for k in zip(_xyzs, sweep_xyzs)]
+				d_xyzs2.append(_dxyzs)
 
 
 
