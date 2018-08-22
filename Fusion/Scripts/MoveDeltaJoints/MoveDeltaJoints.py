@@ -12,7 +12,7 @@ xyzs = []
 
 rootPath = os.path.expanduser('~')
 fullPath = os.path.join(rootPath, 'Data', 'output3.csv')
-jsonFullPath = 'Documents/data2.json'
+jsonFullPath = 'Documents/data4.json'
 
 app = adsk.core.Application.get()
 ui = app.userInterface
@@ -66,11 +66,31 @@ def setRevoluteJoints(revolute_joints, thetas):
 	#did not work correctly without both adsk.doEvents() commands at the end
 	#does appear to work with the doEvents() after locking and unlocking commented out
 	try:
-		for idx, joint in enumerate(revolute_joints):
-			if joint.jointMotion.rotationValue != abs2rev(thetas[idx]):
-				joint.isLocked = False
-				joint.jointMotion.rotationValue = abs2rev(thetas[idx])
-				joint.isLocked = True
+		cur_joint_angles = [rev2abs(k.jointMotion.rotationValue) for k in revolute_joints]
+		counter = 0
+		while not all(math.isclose(k[0], k[1], abs_tol=0.001) for k in zip(cur_joint_angles, thetas)):
+			for idx, joint in enumerate(revolute_joints):
+				if joint.jointMotion.rotationValue != abs2rev(thetas[idx]):
+					joint.isLocked = False
+					joint.jointMotion.rotationValue = abs2rev(thetas[idx])
+					joint.isLocked = True
+					adsk.doEvents()
+			cur_joint_angles = [rev2abs(k.jointMotion.rotationValue) for k in revolute_joints]
+
+			#if the angles are not correct, shuffle them a bit and re-attempt.
+			if not all(math.isclose(k[0], k[1], abs_tol=0.001) for k in zip(cur_joint_angles, thetas)):
+				temp_thetas = [(k[0]+k[1])/2.0 for k in zip(cur_joint_angles, thetas)]
+				for idx, joint in enumerate(revolute_joints):
+					if joint.jointMotion.rotationValue != abs2rev(thetas[idx]):
+						joint.isLocked = False
+						joint.jointMotion.rotationValue = abs2rev(temp_thetas[idx])
+						joint.isLocked = True
+						adsk.doEvents()
+
+			counter += 1
+			if counter > 10:
+				break
+
 		adsk.doEvents()
 		adsk.doEvents()
 
@@ -179,9 +199,9 @@ def run(context):
 		d_xyzs2 = []
 
 
-		theta0_range = [10.0*k+0.1 for k in range(-7,8)]
+		theta0_range = [30.0*k+0.1 for k in range(-2,3)]
 		theta0_range = [k*pi/180.0 for k in theta0_range]
-		theta1_range = [10.0*k+0.1 for k in range(-7,8)]
+		theta1_range = [30.0*k+0.1 for k in range(-2,3)]
 		theta1_range = [k*pi/180.0 for k in theta1_range]
 
 
@@ -229,7 +249,7 @@ def run(context):
 		stop_time = time.time()
 		delta_time = stop_time - start_time
 
-		simdata = {'xyzs':xyzs, 'angles':angles, 'd_xyzs0':d_xyzs0, 'd_xyzs1':d_xyzs1, 'd_xyzs2':d_xyzs2,
+		simdata = {'xyzs':xyzs, 'angles':thetas, 'd_xyzs0':d_xyzs0, 'd_xyzs1':d_xyzs1, 'd_xyzs2':d_xyzs2,
 		'driven_arm_lengths': driven_arm_lengths,
 		'free_arm_lenghts': free_arm_lenghts,
 		'parallel_axes_dist': parallel_axes_dist,
