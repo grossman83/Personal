@@ -226,7 +226,7 @@ def run(context):
 		stop_time = time.time()
 		delta_time = stop_time - start_time
 
-		simdata = {'xyzs':xyzs, 'angles':angles, 'd_xyzs0':d_xyzs0, 'd_xyzs1':d_xyzs1, 'd_xyzs2':d_xyzs2,
+		simdata = {'xyzs':xyzs, 'angles':thetas, 'd_xyzs0':d_xyzs0, 'd_xyzs1':d_xyzs1, 'd_xyzs2':d_xyzs2,
 		'driven_arm_lengths': driven_arm_lengths,
 		'free_arm_lenghts': free_arm_lenghts,
 		'parallel_axes_dist': parallel_axes_dist,
