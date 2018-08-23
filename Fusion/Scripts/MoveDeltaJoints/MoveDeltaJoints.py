@@ -128,6 +128,7 @@ def sweep_joint(joint_id, revolute_joints, thetas, mobilePlatform):
 		adsk.doEvents()
 		for theta in thetas:
 			revolute_joints[joint_id].jointMotion.rotationValue = abs2rev(theta)
+			# adsk.doEvents()
 			temp_angles = [rev2abs(j.jointMotion.rotationValue) for j in revolute_joints]
 			temp_angles[joint_id] = theta
 			angles.append(temp_angles)
@@ -199,14 +200,16 @@ def run(context):
 		d_xyzs2 = []
 
 
-		theta0_range = [30.0*k+0.1 for k in range(-2,3)]
+		theta0_range = [5.0*k+0.1 for k in range(-12,13)]
 		theta0_range = [k*pi/180.0 for k in theta0_range]
-		theta1_range = [30.0*k+0.1 for k in range(-2,3)]
+		theta1_range = [5.0*k+0.1 for k in range(-12,13)]
 		theta1_range = [k*pi/180.0 for k in theta1_range]
 
 
-		theta2_range = [5.0*k+0.1 for k in range(-15,16)]
+		theta2_range = [2.0*k+0.1 for k in range(-32,11)]
 		theta2_range = [k*pi/180 for k in theta2_range]
+
+		enable_dxyzs = False
 		
 
 		loop_count = 0
@@ -220,29 +223,29 @@ def run(context):
 				xyzs.append(sweep_xyzs)
 				thetas.append(angles)
 
+				if enable_dxyzs:
+					#now make minor adjustment to the thetas and redo the sweep to get
+					#dtheta / norm(dxyz) for each of the three axes.
+					setRevoluteJoints(revolute_joints, [t0+dtheta, t1, theta2_range[0]])
+					_angles, _xyzs = sweep_joint(2, revolute_joints, theta2_range, mobilePlatform)
+					# _norms = get_norms(sweep_xyzs, _xyzs)
+					# dtheta_l = dtheta*driven_arm_lengths[0]
+					_dxyzs = [[k[0][0] - k[1][0], k[0][1] - k[1][1], k[0][2]-k[1][2]] for k in zip(_xyzs, sweep_xyzs)]
+					d_xyzs0.append(_dxyzs)
 
-				#now make minor adjustment to the thetas and redo the sweep to get
-				#dtheta / norm(dxyz) for each of the three axes.
-				setRevoluteJoints(revolute_joints, [t0+dtheta, t1, theta2_range[0]])
-				_angles, _xyzs = sweep_joint(2, revolute_joints, theta2_range, mobilePlatform)
-				# _norms = get_norms(sweep_xyzs, _xyzs)
-				# dtheta_l = dtheta*driven_arm_lengths[0]
-				_dxyzs = [[k[0][0] - k[1][0], k[0][1] - k[1][1], k[0][2]-k[1][2]] for k in zip(_xyzs, sweep_xyzs)]
-				d_xyzs0.append(_dxyzs)
+					setRevoluteJoints(revolute_joints, [t0, t1+dtheta, theta2_range[0]])
+					_angles, _xyzs = sweep_joint(2, revolute_joints, theta2_range, mobilePlatform)
+					# _norms = get_norms(sweep_xyzs, _xyzs)
+					# dtheta_l = dtheta*driven_arm_lengths[1]
+					_dxyzs = [[k[0][0] - k[1][0], k[0][1] - k[1][1], k[0][2]-k[1][2]] for k in zip(_xyzs, sweep_xyzs)]
+					d_xyzs1.append(_dxyzs)
 
-				setRevoluteJoints(revolute_joints, [t0, t1+dtheta, theta2_range[0]])
-				_angles, _xyzs = sweep_joint(2, revolute_joints, theta2_range, mobilePlatform)
-				# _norms = get_norms(sweep_xyzs, _xyzs)
-				# dtheta_l = dtheta*driven_arm_lengths[1]
-				_dxyzs = [[k[0][0] - k[1][0], k[0][1] - k[1][1], k[0][2]-k[1][2]] for k in zip(_xyzs, sweep_xyzs)]
-				d_xyzs1.append(_dxyzs)
-
-				setRevoluteJoints(revolute_joints, [t0, t1, theta2_range[0]])
-				_angles, _xyzs = sweep_joint(2, revolute_joints, [k+dtheta for k in theta2_range], mobilePlatform)
-				# _norms = get_norms(sweep_xyzs, _xyzs)
-				# dtheta_l = dtheta*driven_arm_lengths[2]
-				_dxyzs = [[k[0][0] - k[1][0], k[0][1] - k[1][1], k[0][2]-k[1][2]] for k in zip(_xyzs, sweep_xyzs)]
-				d_xyzs2.append(_dxyzs)
+					setRevoluteJoints(revolute_joints, [t0, t1, theta2_range[0]])
+					_angles, _xyzs = sweep_joint(2, revolute_joints, [k+dtheta for k in theta2_range], mobilePlatform)
+					# _norms = get_norms(sweep_xyzs, _xyzs)
+					# dtheta_l = dtheta*driven_arm_lengths[2]
+					_dxyzs = [[k[0][0] - k[1][0], k[0][1] - k[1][1], k[0][2]-k[1][2]] for k in zip(_xyzs, sweep_xyzs)]
+					d_xyzs2.append(_dxyzs)
 
 
 
