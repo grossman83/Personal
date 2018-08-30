@@ -12,7 +12,7 @@ xyzs = []
 
 rootPath = os.path.expanduser('~')
 fullPath = os.path.join(rootPath, 'Data', 'output3.csv')
-jsonFullPath = os.path.join(rootPath, 'Documents/data42.json')
+jsonFullPath = os.path.join(rootPath, 'Documents/data51.json')
 
 app = adsk.core.Application.get()
 ui = app.userInterface
@@ -55,10 +55,12 @@ def abs2rev(theta):
 	#below the horizontal. this converts them to how the joint is setup which
 	#is between 0 and 180. The reason for this is that fusion does not handle
 	#well joints that pass through the 0/360 degree point.
-	return theta + pi/2
+	# return theta + pi/2
+	return theta
 
 def rev2abs(theta):
-	return theta - pi/2
+	# return theta - pi/2
+	return theta
 
 def setRevoluteJoints(revolute_joints, thetas):
 	#successively unlocks, then moves any joint that is not set to the angle desired by thetas
@@ -181,10 +183,10 @@ def run(context):
 		mobilePlatform = rootComp.occurrences.itemByName('Mobile_Platform:1')
 
 		#joint origin of off-axis revolute joint
-		off_axis_joint_origin = rootComp.jointOrigins.itemByName('off_axis_joint_origin')
-		off_axis_joint_Xdist = off_axis_joint_origin.offsetX.value
-		off_axis_joint_Ydist = off_axis_joint_origin.offsetY.value
-		off_axis_joint_Zdist = off_axis_joint_origin.offsetZ.value
+		# off_axis_joint_origin = rootComp.jointOrigins.itemByName('off_axis_joint_origin')
+		# off_axis_joint_Xdist = off_axis_joint_origin.offsetX.value
+		# off_axis_joint_Ydist = off_axis_joint_origin.offsetY.value
+		# off_axis_joint_Zdist = off_axis_joint_origin.offsetZ.value
 
 
 		rev0 = rootComp.joints.itemByName('Shoulder0_Revolute')
@@ -200,13 +202,13 @@ def run(context):
 		d_xyzs2 = []
 
 
-		theta0_range = [5.0*k for k in range(-10,11)]
+		theta0_range = [5.0*k for k in range(-9,10)]
 		theta0_range = [k*pi/180.0 for k in theta0_range]
-		theta1_range = [5.0*k for k in range(-10,11)]
+		theta1_range = [5.0*k for k in range(-9,10)]
 		theta1_range = [k*pi/180.0 for k in theta1_range]
 
 
-		theta2_range = [2.0*k for k in range(-28,26)]
+		theta2_range = [2.0*k for k in range(-23,24)]
 		theta2_range = [k*pi/180 for k in theta2_range]
 
 		enable_dxyzs = False
@@ -257,7 +259,7 @@ def run(context):
 		'free_arm_lenghts': free_arm_lenghts,
 		'parallel_axes_dist': parallel_axes_dist,
 		'driven_arm_lengths': driven_arm_lengths,
-		'off_axis_joint_position': [off_axis_joint_Xdist, off_axis_joint_Ydist, off_axis_joint_Zdist],
+		# 'off_axis_joint_position': [off_axis_joint_Xdist, off_axis_joint_Ydist, off_axis_joint_Zdist],
 		'simDuration': delta_time}
 		
 		write2json(jsonFullPath, simdata)
