@@ -12,7 +12,7 @@ xyzs = []
 
 rootPath = os.path.expanduser('~')
 fullPath = os.path.join(rootPath, 'Data', 'output3.csv')
-jsonFullPath = os.path.join(rootPath, 'Documents/data51.json')
+jsonFullPath = os.path.join(rootPath, 'Documents/data56.json')
 
 app = adsk.core.Application.get()
 ui = app.userInterface
@@ -32,6 +32,14 @@ free_arm_lenghts = [free_arm_length, free_arm_length, off_axis_free_arm_length]
 
 #constants
 dtheta = 0.001#1mrad
+
+def linspace(start, stop, n):
+    if n == 1:
+        yield stop
+        return
+    h = (stop - start) / (n - 1)
+    for i in range(n):
+        yield start + h * i
 
 
 def getDist2Origin(component):
@@ -55,12 +63,10 @@ def abs2rev(theta):
 	#below the horizontal. this converts them to how the joint is setup which
 	#is between 0 and 180. The reason for this is that fusion does not handle
 	#well joints that pass through the 0/360 degree point.
-	# return theta + pi/2
-	return theta
+	return theta + pi/2
 
 def rev2abs(theta):
-	# return theta - pi/2
-	return theta
+	return theta - pi/2
 
 def setRevoluteJoints(revolute_joints, thetas):
 	#successively unlocks, then moves any joint that is not set to the angle desired by thetas
@@ -100,6 +106,27 @@ def setRevoluteJoints(revolute_joints, thetas):
 		if ui:
 			ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))
 
+
+def setPRevoluteJoints(revolute_joints, thetas):
+	#successively unlocks, then moves any joint that is not set to the angle desired by thetas
+	#makes the movement in 4 steps per joint if angle movement is greater than X
+	try:
+		nsteps = 6
+		for idx, jnt in enumerate(revolute_joints):
+			theta = thetas[idx]
+			cur_theta = rev2abs(jnt.jointMotion.rotationValue)
+			_thetas = linspace(cur_theta, theta, nsteps)
+			for _theta in _thetas:
+				jnt.isLocked = False
+				jnt.jointMotion.rotationValue = _theta
+				jnt.isLocked = True
+				adsk.doEvents()
+		adsk.doEvents()
+
+	except:
+		if ui:
+			ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))
+
 #test script
 # desired_thetas, measured_thetas = test_setRevoluteJoints(revolute_joints)
 # [list(map(operator.sub, k[0],k[1])) for k in zip(desired_thetas, measured_thetas)]
@@ -128,6 +155,7 @@ def sweep_joint(joint_id, revolute_joints, thetas, mobilePlatform):
 		angles = []
 		revolute_joints[joint_id].isLocked = False
 		adsk.doEvents()
+		numpts = len(thetas)
 		for theta in thetas:
 			revolute_joints[joint_id].jointMotion.rotationValue = abs2rev(theta)
 			# adsk.doEvents()
@@ -135,6 +163,10 @@ def sweep_joint(joint_id, revolute_joints, thetas, mobilePlatform):
 			temp_angles[joint_id] = theta
 			angles.append(temp_angles)
 			xyzs.append(getDist2Origin(mobilePlatform))
+		revolute_joints[joint_id].jointMotion.rotationValue = abs2rev(thetas[int(numpts*0.75)])
+		revolute_joints[joint_id].jointMotion.rotationValue = abs2rev(thetas[int(numpts*0.5)])
+		revolute_joints[joint_id].jointMotion.rotationValue = abs2rev(thetas[int(numpts*0.25)])
+		revolute_joints[joint_id].jointMotion.rotationValue = abs2rev(thetas[0])
 		revolute_joints[joint_id].isLocked = True
 		adsk.doEvents()
 		return angles, xyzs
@@ -202,9 +234,9 @@ def run(context):
 		d_xyzs2 = []
 
 
-		theta0_range = [5.0*k for k in range(-9,10)]
+		theta0_range = [5.0*k for k in range(-10,11)]
 		theta0_range = [k*pi/180.0 for k in theta0_range]
-		theta1_range = [5.0*k for k in range(-9,10)]
+		theta1_range = [5.0*k for k in range(-10,11)]
 		theta1_range = [k*pi/180.0 for k in theta1_range]
 
 
