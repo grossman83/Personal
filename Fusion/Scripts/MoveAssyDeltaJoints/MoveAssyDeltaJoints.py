@@ -12,7 +12,7 @@ xyzs = []
 
 rootPath = os.path.expanduser('~')
 fullPath = os.path.join(rootPath, 'Data', 'output3.csv')
-jsonFullPath = os.path.join(rootPath, 'Documents/data56.json')
+jsonFullPath = os.path.join(rootPath, 'Documents/data58.json')
 
 app = adsk.core.Application.get()
 ui = app.userInterface
@@ -74,6 +74,10 @@ def setRevoluteJoints(revolute_joints, thetas):
 	#did not work correctly without both adsk.doEvents() commands at the end
 	#does appear to work with the doEvents() after locking and unlocking commented out
 	try:
+		# try reversing revolute_joints and thetas
+		revolute_joints.reverse()
+		thetas.reverse()
+
 		cur_joint_angles = [rev2abs(k.jointMotion.rotationValue) for k in revolute_joints]
 		counter = 0
 		while not all(math.isclose(k[0], k[1], abs_tol=0.001) for k in zip(cur_joint_angles, thetas)):
@@ -111,16 +115,26 @@ def setPRevoluteJoints(revolute_joints, thetas):
 	#successively unlocks, then moves any joint that is not set to the angle desired by thetas
 	#makes the movement in 4 steps per joint if angle movement is greater than X
 	try:
-		nsteps = 6
 		for idx, jnt in enumerate(revolute_joints):
 			theta = thetas[idx]
 			cur_theta = rev2abs(jnt.jointMotion.rotationValue)
-			_thetas = linspace(cur_theta, theta, nsteps)
-			for _theta in _thetas:
-				jnt.isLocked = False
-				jnt.jointMotion.rotationValue = _theta
-				jnt.isLocked = True
-				adsk.doEvents()
+			
+			if not math.isclose(cur_theta, theta, abs_tol=0.001):
+				dtheta = abs(theta-cur_theta)
+				if dtheta < pi/6:
+					jnt.isLocked = False
+					jnt.jointMotion.rotationValue = abs2rev(theta)
+					jnt.isLocked = True
+					adsk.doEvents()
+				
+				else:
+					nsteps = 5
+					_thetas = linspace(cur_theta, theta, nsteps)
+					for _theta in _thetas:
+						jnt.isLocked = False
+						jnt.jointMotion.rotationValue = abs2rev(_theta)
+						jnt.isLocked = True
+						adsk.doEvents()
 		adsk.doEvents()
 
 	except:
@@ -163,10 +177,13 @@ def sweep_joint(joint_id, revolute_joints, thetas, mobilePlatform):
 			temp_angles[joint_id] = theta
 			angles.append(temp_angles)
 			xyzs.append(getDist2Origin(mobilePlatform))
-		revolute_joints[joint_id].jointMotion.rotationValue = abs2rev(thetas[int(numpts*0.75)])
-		revolute_joints[joint_id].jointMotion.rotationValue = abs2rev(thetas[int(numpts*0.5)])
-		revolute_joints[joint_id].jointMotion.rotationValue = abs2rev(thetas[int(numpts*0.25)])
-		revolute_joints[joint_id].jointMotion.rotationValue = abs2rev(thetas[0])
+		
+		adsk.doEvents()
+		thetas.reverse()
+		for theta in thetas:
+			revolute_joints[joint_id].jointMotion.rotationValue = abs2rev(theta)
+			temp_angles = [rev2abs(j.jointMotion.rotationValue) for j in revolute_joints]
+		
 		revolute_joints[joint_id].isLocked = True
 		adsk.doEvents()
 		return angles, xyzs
@@ -251,7 +268,7 @@ def run(context):
 		for t0 in theta0_range:
 			for t1 in theta1_range:
 				#set starting positions for all joints
-				setRevoluteJoints(revolute_joints, [t0, t1, theta2_range[0]])
+				setPRevoluteJoints(revolute_joints, [t0, t1, theta2_range[0]])
 				#perform the sweep
 				angles, sweep_xyzs = sweep_joint(2, revolute_joints, theta2_range, mobilePlatform)
 				xyzs.append(sweep_xyzs)
