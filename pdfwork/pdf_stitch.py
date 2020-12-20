@@ -21,6 +21,8 @@ import sys
 # This assumes that the file is in the user's space (~/).
 # This can be pretty slow [> 10-20 seconds] for larger pdfs. Not sure why.
 
+# Information on PyPDF2 here: https://pythonhosted.org/PyPDF2/index.html
+
 
 
 if __name__ =='__main__':
