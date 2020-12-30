@@ -12,7 +12,7 @@ xyzs = []
 
 rootPath = os.path.expanduser('~')
 fullPath = os.path.join(rootPath, 'Data', 'output3.csv')
-jsonFullPath = os.path.join(rootPath, 'Documents/data42.json')
+jsonFullPath = os.path.join(rootPath, 'Documents/data58.json')
 
 app = adsk.core.Application.get()
 ui = app.userInterface
@@ -32,6 +32,14 @@ free_arm_lenghts = [free_arm_length, free_arm_length, off_axis_free_arm_length]
 
 #constants
 dtheta = 0.001#1mrad
+
+def linspace(start, stop, n):
+    if n == 1:
+        yield stop
+        return
+    h = (stop - start) / (n - 1)
+    for i in range(n):
+        yield start + h * i
 
 
 def getDist2Origin(component):
@@ -66,6 +74,10 @@ def setRevoluteJoints(revolute_joints, thetas):
 	#did not work correctly without both adsk.doEvents() commands at the end
 	#does appear to work with the doEvents() after locking and unlocking commented out
 	try:
+		# try reversing revolute_joints and thetas
+		revolute_joints.reverse()
+		thetas.reverse()
+
 		cur_joint_angles = [rev2abs(k.jointMotion.rotationValue) for k in revolute_joints]
 		counter = 0
 		while not all(math.isclose(k[0], k[1], abs_tol=0.001) for k in zip(cur_joint_angles, thetas)):
@@ -92,6 +104,37 @@ def setRevoluteJoints(revolute_joints, thetas):
 				break
 
 		adsk.doEvents()
+		adsk.doEvents()
+
+	except:
+		if ui:
+			ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))
+
+
+def setPRevoluteJoints(revolute_joints, thetas):
+	#successively unlocks, then moves any joint that is not set to the angle desired by thetas
+	#makes the movement in 4 steps per joint if angle movement is greater than X
+	try:
+		for idx, jnt in enumerate(revolute_joints):
+			theta = thetas[idx]
+			cur_theta = rev2abs(jnt.jointMotion.rotationValue)
+			
+			if not math.isclose(cur_theta, theta, abs_tol=0.001):
+				dtheta = abs(theta-cur_theta)
+				if dtheta < pi/6:
+					jnt.isLocked = False
+					jnt.jointMotion.rotationValue = abs2rev(theta)
+					jnt.isLocked = True
+					adsk.doEvents()
+				
+				else:
+					nsteps = 5
+					_thetas = linspace(cur_theta, theta, nsteps)
+					for _theta in _thetas:
+						jnt.isLocked = False
+						jnt.jointMotion.rotationValue = abs2rev(_theta)
+						jnt.isLocked = True
+						adsk.doEvents()
 		adsk.doEvents()
 
 	except:
@@ -126,6 +169,7 @@ def sweep_joint(joint_id, revolute_joints, thetas, mobilePlatform):
 		angles = []
 		revolute_joints[joint_id].isLocked = False
 		adsk.doEvents()
+		numpts = len(thetas)
 		for theta in thetas:
 			revolute_joints[joint_id].jointMotion.rotationValue = abs2rev(theta)
 			# adsk.doEvents()
@@ -133,6 +177,13 @@ def sweep_joint(joint_id, revolute_joints, thetas, mobilePlatform):
 			temp_angles[joint_id] = theta
 			angles.append(temp_angles)
 			xyzs.append(getDist2Origin(mobilePlatform))
+		
+		adsk.doEvents()
+		thetas.reverse()
+		for theta in thetas:
+			revolute_joints[joint_id].jointMotion.rotationValue = abs2rev(theta)
+			temp_angles = [rev2abs(j.jointMotion.rotationValue) for j in revolute_joints]
+		
 		revolute_joints[joint_id].isLocked = True
 		adsk.doEvents()
 		return angles, xyzs
@@ -181,10 +232,10 @@ def run(context):
 		mobilePlatform = rootComp.occurrences.itemByName('Mobile_Platform:1')
 
 		#joint origin of off-axis revolute joint
-		off_axis_joint_origin = rootComp.jointOrigins.itemByName('off_axis_joint_origin')
-		off_axis_joint_Xdist = off_axis_joint_origin.offsetX.value
-		off_axis_joint_Ydist = off_axis_joint_origin.offsetY.value
-		off_axis_joint_Zdist = off_axis_joint_origin.offsetZ.value
+		# off_axis_joint_origin = rootComp.jointOrigins.itemByName('off_axis_joint_origin')
+		# off_axis_joint_Xdist = off_axis_joint_origin.offsetX.value
+		# off_axis_joint_Ydist = off_axis_joint_origin.offsetY.value
+		# off_axis_joint_Zdist = off_axis_joint_origin.offsetZ.value
 
 
 		rev0 = rootComp.joints.itemByName('Shoulder0_Revolute')
@@ -206,7 +257,7 @@ def run(context):
 		theta1_range = [k*pi/180.0 for k in theta1_range]
 
 
-		theta2_range = [2.0*k for k in range(-28,26)]
+		theta2_range = [2.0*k for k in range(-23,24)]
 		theta2_range = [k*pi/180 for k in theta2_range]
 
 		enable_dxyzs = False
@@ -217,7 +268,7 @@ def run(context):
 		for t0 in theta0_range:
 			for t1 in theta1_range:
 				#set starting positions for all joints
-				setRevoluteJoints(revolute_joints, [t0, t1, theta2_range[0]])
+				setPRevoluteJoints(revolute_joints, [t0, t1, theta2_range[0]])
 				#perform the sweep
 				angles, sweep_xyzs = sweep_joint(2, revolute_joints, theta2_range, mobilePlatform)
 				xyzs.append(sweep_xyzs)
@@ -257,7 +308,7 @@ def run(context):
 		'free_arm_lenghts': free_arm_lenghts,
 		'parallel_axes_dist': parallel_axes_dist,
 		'driven_arm_lengths': driven_arm_lengths,
-		'off_axis_joint_position': [off_axis_joint_Xdist, off_axis_joint_Ydist, off_axis_joint_Zdist],
+		# 'off_axis_joint_position': [off_axis_joint_Xdist, off_axis_joint_Ydist, off_axis_joint_Zdist],
 		'simDuration': delta_time}
 		
 		write2json(jsonFullPath, simdata)
