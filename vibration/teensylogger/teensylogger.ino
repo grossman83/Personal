@@ -38,7 +38,7 @@ void setup(void) {
   }
   Serial.println("MPU6050 Found!");
 
-  mpu.setAccelerometerRange(MPU6050_RANGE_16_G);
+  mpu.setAccelerometerRange(MPU6050_RANGE_2_G);
   Serial.print("Accelerometer range set to: ");
   switch (mpu.getAccelerometerRange()) {
   case MPU6050_RANGE_2_G:
@@ -115,22 +115,30 @@ void setup(void) {
 
 void record_data(){
   int record = 1;
-  File dataFile = SD.open("1336.txt", FILE_WRITE);
+  int ts = millis();
+  File dataFile = SD.open("xfrmr3.txt", FILE_WRITE);
   if (dataFile) {
     Serial.println("Data File Opened");
     digitalWrite(led_pin, record);
+    int count = 0;
 
     while (record) {
       sensors_event_t a, g, temp;
       mpu.getEvent(&a, &g, &temp);
-      dataFile.println(String(millis()) + "," + String(a.acceleration.x) + "," + String(a.acceleration.y) + "," + String(a.acceleration.z));
+      dataFile.println(String(micros()) + "," + String(a.acceleration.x) + "," + String(a.acceleration.y) + "," + String(a.acceleration.z));
+      count ++;
+      if (count > 5000) {
+        dataFile.flush();
+        count = 0;
+      }
+      
 
       if(!digitalRead(btn)){
         //close dataFile and exit
         dataFile.close();
         //Turn off the LED
         digitalWrite(led_pin, 0);
-        delay(50);
+        delay(100);
         break;
       }
     }
