@@ -8,10 +8,11 @@
 #include <Wire.h>
 #include <SPI.h>
 
-const int btn = 14; //btn pin
-int btnState;
+const int btn = 23; //btn pin
+int btnState = 1;
 //macro for detection af rasing edge
 #define RE(signal, state) (state=(state<<1)|(signal&1)&3)==1
+#define FE(signal, state) (state=(state<<1)|(signal&1)&3)==2
 
 
 bool SD_log = true;
@@ -107,26 +108,24 @@ void setup(void) {
 
   pinMode(led_pin, OUTPUT);
   pinMode(btn, INPUT_PULLUP);
+  digitalWrite(led_pin, 0);
 }
 
 
 
 void record_data(){
-//  char filename = String("Data" + millis() + ".txt");
-//  File dataFile = SD.open(filename, FILE_WRITE);
-//  File dataFile = SD.open("data" + millis() + ".txt", FILE_WRITE);
-File dataFile = SD.open("data12345.txt", FILE_WRITE);
   int record = 1;
-  digitalWrite(led_pin, record);
+  File dataFile = SD.open("1336.txt", FILE_WRITE);
+  if (dataFile) {
+    Serial.println("Data File Opened");
+    digitalWrite(led_pin, record);
 
-  while(record) {
-    sensors_event_t a, g, temp;
-    mpu.getEvent(&a, &g, &temp);
-    if (dataFile) {
+    while (record) {
+      sensors_event_t a, g, temp;
+      mpu.getEvent(&a, &g, &temp);
       dataFile.println(String(millis()) + "," + String(a.acceleration.x) + "," + String(a.acceleration.y) + "," + String(a.acceleration.z));
-      Serial.println(String(millis()) + "," + String(a.acceleration.x) + "," + String(a.acceleration.y) + "," + String(a.acceleration.z));
-      
-      if(RE(digitalRead(btn), btnState)){
+
+      if(!digitalRead(btn)){
         //close dataFile and exit
         dataFile.close();
         //Turn off the LED
@@ -136,14 +135,28 @@ File dataFile = SD.open("data12345.txt", FILE_WRITE);
       }
     }
   }
+  else {
+    Serial.println("Unable to open SD card");
+  }
 }
 
 
 
 
 void loop() {
-  if(RE(digitalRead(btn), btnState)){
+  delay(50);
+  Serial.println("in loop");
+  if(!digitalRead(btn)){
+    Serial.println("recording");
+    delay(100);
     record_data();
-    delay(50);
+    
   }
+//  if(FE(digitalRead(btn), btnState)){
+//    digitalWrite(led_pin, 1);
+//    delay(500);
+//  btnState = digitalRead(btn);
+//  digitalWrite(led_pin, btnState);
+
+  
 }
