@@ -10,7 +10,7 @@
 // Reference Material
 //https://github.com/rlogiacco/CircularBuffer
 
-String filename = "Desk3.csv";
+char filename[] = "I1800.CSV";
 const int btn = 23; //btn pin
 int btnState = 1;
 //macro for detection af rasing edge
@@ -46,7 +46,7 @@ void setup(void) {
   }
   Serial.println("MPU6050 Found!");
 
-  mpu.setAccelerometerRange(MPU6050_RANGE_4_G);
+  mpu.setAccelerometerRange(MPU6050_RANGE_2_G);
   Serial.print("Accelerometer range set to: ");
   switch (mpu.getAccelerometerRange()) {
   case MPU6050_RANGE_2_G:
@@ -123,7 +123,7 @@ void setup(void) {
 
 void record_data(){
   int record = 1;
-  File dataFile = SD.open("lathe.csv", FILE_WRITE);
+  File dataFile = SD.open(filename, FILE_WRITE);
   if (dataFile) {
     Serial.println("Data File Opened");
     digitalWrite(led_pin, record);
@@ -174,7 +174,7 @@ void record_data(){
 
 
 void loop() {
-  delay(50);
+  delay(100);
   Serial.println("in loop");
   if(!digitalRead(btn)){
     Serial.println("recording");
