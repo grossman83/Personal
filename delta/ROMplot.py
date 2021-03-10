@@ -3,7 +3,7 @@ import sys
 import os
 import numpy as np
 import json
-
+import copy
 import pdb
 
 
@@ -26,21 +26,33 @@ def import_json(fullPath):
 	return data
 
 
-
 if __name__ == '__main__':
 	# fullPath = os.path.join(os.path.expanduser('~'), 'Documents','Output4.csv')
-	fullPath = os.path.join(os.path.expanduser('~'), 'Documents','data14.json')
+	fullPath = os.path.join(os.path.expanduser('~'), 'Documents', 'Simulation Results', 'symmetrical2.json')
 
 	# blah = readCSV(fullPath)
 	data = import_json(fullPath)
 	# pdb.set_trace()
 	xyzs = data['xyzs']
-	data_shape = np.shape(xyzs)
-	xxyyzzs = np.reshape(xyzs, (data_shape[0]*data_shape[1], data_shape[2]))
-	thetas = data['thetas']
-	# xyzs = [eval(k[1]) for k in blah]
-	# thetas = [eval(k[0]) for k in blah]
-	# pdb.set_trace()
+	angles = data['angles']
+	dxyz0 = data['d_xyzs0']
+	dxyz1 = data['d_xyzs1']
+	dxyz2 = data['d_xyzs2']
+	xyzs = np.array([item for lst in xyzs for item in lst])
+	dxyz0 = np.array([item for lst in dxyz0 for item in lst])
+	dxyz1 = np.array([item for lst in dxyz1 for item in lst])
+	dxyz2 = np.array([item for lst in dxyz2 for item in lst])
+	dxyzs = [dxyz0, dxyz1, dxyz2]
+
+	pt_scores = np.max(dxyzs, axis=0) / np.min(dxyzs, axis=0)
+	
+
+	#remove all points with scores > than XXX
+	max_allowable_score = 20
+	trimmed_pt_scores = pt_scores[pt_scores < max_allowable_score]
+	trimmed_xyzs = xyzs[pt_scores < max_allowable_score]
+
+
 	if len(sys.argv)>1:
 		if sys.argv[1] == 'plotly':
 			#plot in the cloud using plotly
@@ -74,19 +86,20 @@ if __name__ == '__main__':
 			fig = go.Figure(data=data, layout=layout)
 			py.plot(fig, filename='simple-3d-scatter')
 
+
+
 	else:
 		#plot locally using matplotlib
+		import matplotlib as mpl
+		import matplotlib.cm as cm
+		mpl.use('TkAgg')
 		from mpl_toolkits.mplot3d import Axes3D
 		import matplotlib.pyplot as plt
 
-		xs = [k[0] for k in xxyyzzs]
-		ys = [k[1] for k in xxyyzzs]
-		zs = [k[2] for k in xxyyzzs]
-
-
 		fig = plt.figure()
 		ax = fig.add_subplot(111, projection = '3d')
-		ax.scatter(xs,ys,zs)
+		ax.scatter(trimmed_xyzs[:,0], trimmed_xyzs[:,1], trimmed_xyzs[:,2], c=(100*trimmed_pt_scores/max(trimmed_pt_scores)))
+
 		ax.set_xlabel('X')
 		ax.set_ylabel('Y')
 		ax.set_zlabel('Z')
