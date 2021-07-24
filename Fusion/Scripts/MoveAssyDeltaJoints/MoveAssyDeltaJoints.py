@@ -12,7 +12,7 @@ xyzs = []
 
 rootPath = os.path.expanduser('~')
 fullPath = os.path.join(rootPath, 'Data', 'output3.csv')
-jsonFullPath = os.path.join(rootPath, 'Documents/data58.json')
+jsonFullPath = os.path.join(rootPath, 'Documents/asdf.json')
 
 app = adsk.core.Application.get()
 ui = app.userInterface
@@ -251,9 +251,9 @@ def run(context):
 		d_xyzs2 = []
 
 
-		theta0_range = [5.0*k for k in range(-10,11)]
+		theta0_range = [5.0*k for k in range(-3,1)]
 		theta0_range = [k*pi/180.0 for k in theta0_range]
-		theta1_range = [5.0*k for k in range(-10,11)]
+		theta1_range = [5.0*k for k in range(-3,1)]
 		theta1_range = [k*pi/180.0 for k in theta1_range]
 
 
