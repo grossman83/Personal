@@ -40,8 +40,8 @@ if __name__ =='__main__':
 	page_actual_height = 736
 	page_actual_width = 1224
 
-	page_actual_height = 557
-	page_actual_width = 750
+	page_actual_height = 556.5
+	page_actual_width = 745
 
 	#Tabloid size paper 11x17 (landscape = 17x11)
 	#Mediabox size 1224, 792
