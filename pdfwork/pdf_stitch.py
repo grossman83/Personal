@@ -34,14 +34,20 @@ if __name__ =='__main__':
 	infile_path = os.path.join(root_path, infile_path)
 	outfile_path = os.path.join(root_path, outfile_path)
 
-	#the height had to be hard coded. No-where in the pdf file could I find
+	#The height had to be hard coded. No-where in the pdf file could I find
 	#a value that matched the correct stitching value of 736 in the vertical.
 	#Similar story for the width.
 	page_actual_height = 736
 	page_actual_width = 1224
 
+	page_actual_height = 557
+	page_actual_width = 750
+
 	#Tabloid size paper 11x17 (landscape = 17x11)
 	#Mediabox size 1224, 792
+
+	#Letter Size 8.5x11 or 11x8.5 landscape
+	#mediabox is 792x612
 	# creating a pdf File object of original pdf 
 	pdfFileObj = open(infile_path, 'rb') 
 
@@ -56,8 +62,12 @@ if __name__ =='__main__':
 	pages = [pdfReader.getPage(k) for k in range(num_pages)]
 	
 	#set the total height of the pdf
-	total_height = num_pages * page_actual_height + 52
+	page_buffer_tabloid = 52
+	page_buffer_letter = 0
+	total_height = num_pages * page_actual_height + page_buffer_letter
 	total_width = page_actual_width
+
+	# pdb.set_trace()
 
 	#create an empty page the size of the total of the pages
 	blank_page = pdf.PageObject.createBlankPage(width=total_width, height=total_height)
