@@ -88,10 +88,10 @@ if __name__ =='__main__':
 	# 12
 
 	#create a list that explains the order of the pages.
-	page_list = [[1, 2, 3],[4, 5, 6]]
+	page_list = [[1, 2, 3],[4, 5, 6], [7, 8]]
 	# create a blank page the size of the expected set of combined pages
 	canvas_height = len(page_list) * page_actual_height
-	canvas_width = max(len(k) for k in page_list) * page_actual_width
+	canvas_width = max(len(k) for k in page_list) * (page_actual_width + page_xbuffer_letter)
 	blank_page = pdf.PageObject.createBlankPage(width=canvas_width, height=canvas_height)
 
 	idy = len(page_list) - 1
