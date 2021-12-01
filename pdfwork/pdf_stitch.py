@@ -37,17 +37,26 @@ if __name__ =='__main__':
 	#The height had to be hard coded. No-where in the pdf file could I find
 	#a value that matched the correct stitching value of 736 in the vertical.
 	#Similar story for the width.
+
+	#DPI does appear to be 72. We can get this by doing 792/11 = 72
+	# we can also get there by doing 1224/17 = 72
+	# that said there do appear to be some margins. This
+
 	page_actual_height = 736
 	page_actual_width = 1224
 
 
+	# tabloid portrait
+	page_actual_height = 1224
+	page_actual_width = 792
+
 	# letter landscape
-	page_actual_height = 556.5
-	page_actual_width = 745
+	# page_actual_height = 556.5
+	# page_actual_width = 745
 
 	# letter portrait
-	page_actual_height = 687
-	page_actual_width = 556.5
+	# page_actual_height = 687
+	# page_actual_width = 556.5
 
 	#Tabloid size paper 11x17 (landscape = 17x11)
 	#Mediabox size 1224, 792
@@ -67,6 +76,12 @@ if __name__ =='__main__':
 	#create a list of pages
 	pages = [pdfReader.getPage(k) for k in range(num_pages)]
 	
+
+	trimboxes = [k.trimBox for k in pages]
+	page_width = trimboxes[0].getWidth()
+	page_height = trimboxes[0].getHeight()
+
+
 	#set the total height of the pdf
 	page_buffer_tabloid = 52
 	page_ybuffer_letter = 0
@@ -75,7 +90,7 @@ if __name__ =='__main__':
 	total_width = page_actual_width
 	total_width = page_actual_width * 4
 
-
+	# pdb.set_trace()
 	#create an empty page the size of the total of the pages
 	# blank_page = pdf.PageObject.createBlankPage(width=total_width, height=total_height)
 
@@ -87,34 +102,37 @@ if __name__ =='__main__':
 	# 10  11
 	# 12
 
-	#create a list that explains the order of the pages.
-	page_list = [[1, 2, 3],[4, 5, 6], [7, 8]]
-	# create a blank page the size of the expected set of combined pages
-	canvas_height = len(page_list) * page_actual_height
-	canvas_width = max(len(k) for k in page_list) * (page_actual_width + page_xbuffer_letter)
+
+	##@MARC todo set things up for pdfs that are of varying page widths.
+
+	# #create a list that explains the order of the pages.
+	# page_list = [[1, 2, 3],[4, 5, 6], [7, 8]]
+	# # create a blank page the size of the expected set of combined pages
+	# canvas_height = len(page_list) * page_actual_height
+	# canvas_width = max(len(k) for k in page_list) * (page_actual_width + page_xbuffer_letter)
+	# blank_page = pdf.PageObject.createBlankPage(width=canvas_width, height=canvas_height)
+
+	# idy = len(page_list) - 1
+	# for h_page_list in page_list:
+	# 	for page_idx, page_id in zip(range(len(h_page_list)), h_page_list):
+	# 		# pdb.set_trace()
+	# 		print('idy: {0}: '.format(idy))
+	# 		print('page_idx: {0}'.format(page_idx))
+	# 		print('page_id: {0}'.format(page_id))
+	# 		blank_page.mergeTranslatedPage(
+	# 			pages[page_id-1],
+	# 			page_idx * (page_actual_width + page_xbuffer_letter),
+	# 			idy*page_actual_height)
+	# 	idy = idy - 1
+
+	canvas_height = len(pages) * page_actual_height
+	canvas_width = 1 * page_actual_width
 	blank_page = pdf.PageObject.createBlankPage(width=canvas_width, height=canvas_height)
 
-	idy = len(page_list) - 1
-	for h_page_list in page_list:
-		for page_idx, page_id in zip(range(len(h_page_list)), h_page_list):
-			# pdb.set_trace()
-			print('idy: {0}: '.format(idy))
-			print('page_idx: {0}'.format(page_idx))
-			print('page_id: {0}'.format(page_id))
-			blank_page.mergeTranslatedPage(
-				pages[page_id-1],
-				page_idx * (page_actual_width + page_xbuffer_letter),
-				idy*page_actual_height)
-		idy = idy - 1
-
-
-
-	#merge pages (simple case). This was working until I started working on the
-	#the more complicated case above.
-	###############
-	# for idy, page in enumerate(pages):
-	# 	blank_page.mergeTranslatedPage(page, 0, idy * page_actual_height)
-	##############
+	# pdb.set_trace()	
+	pages.reverse()
+	for idy, page in enumerate(pages):
+		blank_page.mergeTranslatedPage(page, 0, idy * page_actual_height)
 
 
 
