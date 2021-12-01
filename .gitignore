@@ -3,6 +3,10 @@ Thumbs.db
 ehthumbs.db
 
 
+#Xcode Stuff
+.DS_Store
+
+
 #Other files
 Fusion/core.py
 Fusion/fusion.py
