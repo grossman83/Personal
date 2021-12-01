@@ -47,7 +47,7 @@ if __name__ =='__main__':
 
 
 	# tabloid portrait
-	page_actual_height = 1224
+	page_actual_height = 1223.0
 	page_actual_width = 792
 
 	# letter landscape
