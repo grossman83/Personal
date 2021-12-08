@@ -1,4 +1,4 @@
-from PyPDF2 import PdfFileReader, PdfFileWriter, pdf
+from PyPDF3 import PdfFileReader, PdfFileWriter, pdf
 import math
 import os
 import pdb
