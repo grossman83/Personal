@@ -12,7 +12,7 @@ from serial.tools import list_ports
 
 from scipy.optimize import minimize
 
-TEST_VOLUME = 1.75  # Liter
+TEST_VOLUME = 0.75  # Liter
 
 ATM_PRESS = 100.0  #kPa
 IDEAL_GAS = 22.4  #L/mol
@@ -68,11 +68,11 @@ def process_flowrate_data(volume, time, delta_P):
 		return res
 
 	#maximum delta P (just use the last few data points)
-	max_delta_P = np.median(delta_P[-5:])
+	max_delta_P = np.median(delta_P[-10:])
 
 	result = minimize(
 		obj_fcn,
-		1.0,
+		5.0,
 		args=(volume, max_delta_P, time, delta_P),
 		method='Nelder-Mead',
 		options={'maxiter':1000, 'disp':True}
@@ -107,6 +107,9 @@ def plot_vac_data(ts, delta_P, modeled_press=None):
 	ax.set_ylabel("Differential Pressure (kPa)")
 	ax.legend(handles=handles)
 	return fig
+
+
+# def plot_pump_curve(max_delta_P, flow_coeff)
 
 
 def setup_opts():
@@ -185,8 +188,9 @@ if __name__ == "__main__":
 
 		#record and print data
 		if start_ts is not None:
-			data.append((ts, press))
-			print("{}, {}".format(ts, press))
+			dt = ts - start_ts
+			data.append((dt, press))
+			print("{}, {}".format(dt, press))
 
 
 	print("Processing Results...")
