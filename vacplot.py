@@ -9,8 +9,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import serial
 from serial.tools import list_ports
-
 from scipy.optimize import minimize
+
+
+import pdb
 
 TEST_VOLUME = 0.75  # Liter
 
@@ -162,37 +164,44 @@ if __name__ == "__main__":
 	print("Connecting to: {}".format(opts.port))
 
 	#connect to the comport to collect data
-	ser = serial.Serial(opts.port, 9600)
-	data = ser.readline(1000) # check that we get something from the port
+	ser = serial.Serial(opts.port, 115200)
+	data = ser.readline(2000) # check that we get something from the port
 	if data is None:
 		print("No data rxed...")
 		sys.exit(1)
 
 	data = []
 	start_ts = None
-	TIMEOUT = 3.0 #seconds after start detected
-	MIN_TRESH = 1.0
+	TIMEOUT = 1000000 #seconds after start detected
+	MIN_TRESH = 0.5 #kPa of vacuum (100 - 2 = 98 kPa abs at sea level)
 	while True:
-		press = float(ser.readline(1000).decode('utf-8'))
-		ts = time.time()
+		# pdb.set_trace()
+		thestr = ser.readline(2000).decode('utf-8')
+		micros = int(thestr[0:thestr.find(',')])
+		press = float(thestr[thestr.find(',')+2:-1])
+
+
+		# press = float(ser.readline(1000).decode('utf-8'))
+		# ts = time.time()
 
 		# check start condition
 		if start_ts is None and press > MIN_TRESH:
 			print("Start condition")
-			start_ts = ts
+			start_ts = micros
 
 		# check timeout condition
 		if start_ts is not None:
-			if ts - start_ts > TIMEOUT:
+			if micros - start_ts > TIMEOUT:
 				break
 
 		#record and print data
 		if start_ts is not None:
-			dt = ts - start_ts
+			dt = (micros - start_ts)/1000000.0
 			data.append((dt, press))
 			print("{}, {}".format(dt, press))
 
 
+	# pdb.set_trace()
 	print("Processing Results...")
 	ts, delta_P = zip(*data)
 	result = process_flowrate_data(TEST_VOLUME, ts, delta_P)
@@ -201,9 +210,7 @@ if __name__ == "__main__":
 	#generate the model fit points
 	flow_coeff = result['flow_coeff']
 	max_delta_P = result['max_delta_P']
-	modeled_press = np.array([
-		model_pressure(flow_coeff, TEST_VOLUME, t, max_delta_P) for t in ts
-	])
+	modeled_press = np.array([model_pressure(flow_coeff, TEST_VOLUME, t, max_delta_P) for t in ts])
 
 	fig = plot_vac_data(ts, delta_P, modeled_press)
 
