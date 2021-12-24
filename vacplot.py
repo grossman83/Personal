@@ -57,10 +57,11 @@ def process_flowrate_data(volume, time, delta_P):
 	"""
 
 	#a simple least squares residual objective function
-	def obj_fcn(flow_coeff, volume, max_delta_P, time, delta_P):
+	def obj_fcn(args, volume, max_delta_P, time, delta_P):
 
+		flow_coeff, time_offset = args
 		modeled_press = np.array([
-			model_pressure(flow_coeff, volume, t, max_delta_P) for t in time
+			model_pressure(flow_coeff, volume, t+time_offset, max_delta_P) for t in time
 		])
 		modeled_press = modeled_press.flatten()
 		delta_P = np.array(delta_P)
@@ -74,20 +75,22 @@ def process_flowrate_data(volume, time, delta_P):
 
 	result = minimize(
 		obj_fcn,
-		5.0,
+		(5.0, 0.0),
 		args=(volume, max_delta_P, time, delta_P),
 		method='Nelder-Mead',
 		options={'maxiter':1000, 'disp':True}
 	)
 
 	flow_coeff = result['x'][0]
+	time_offset = result['x'][1]
 
 	max_flow = (IDEAL_GAS * TEST_TEMPERATURE / STD_TEMPERATURE) / flow_coeff
 
 	return {
 		'flow_coeff': flow_coeff,
 		'max_delta_P': max_delta_P,
-		'max_flow': max_flow
+		'max_flow': max_flow,
+		'time_offset': time_offset,
 	}
 
 
@@ -173,7 +176,7 @@ if __name__ == "__main__":
 	data = []
 	start_ts = None
 	TIMEOUT = 1000000 #seconds after start detected
-	MIN_TRESH = 0.5 #kPa of vacuum (100 - 2 = 98 kPa abs at sea level)
+	MIN_TRESH = 3.0 #kPa of vacuum (100 - 2 = 98 kPa abs at sea level)
 	while True:
 		# pdb.set_trace()
 		thestr = ser.readline(2000).decode('utf-8')
@@ -210,7 +213,8 @@ if __name__ == "__main__":
 	#generate the model fit points
 	flow_coeff = result['flow_coeff']
 	max_delta_P = result['max_delta_P']
-	modeled_press = np.array([model_pressure(flow_coeff, TEST_VOLUME, t, max_delta_P) for t in ts])
+	time_offset = result['time_offset']
+	modeled_press = np.array([model_pressure(flow_coeff, TEST_VOLUME, t+time_offset, max_delta_P) for t in ts])
 
 	fig = plot_vac_data(ts, delta_P, modeled_press)
 
