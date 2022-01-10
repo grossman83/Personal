@@ -113,6 +113,8 @@ def plot_vac_data(ts, delta_P, modeled_press=None):
 	ax.legend(handles=handles)
 	return fig
 
+def bits2pressure(bits):
+	return 
 
 # def plot_pump_curve(max_delta_P, flow_coeff)
 
@@ -188,33 +190,29 @@ if __name__ == "__main__":
 
 	data = []
 	start_ts = None
-	TIMEOUT = 2000000 #seconds after start detected
-	MIN_TRESH = 3.0 #kPa of vacuum (100 - 2 = 98 kPa abs at sea level)
+	TIMEOUT_us = 2000000 #microseconds after start detected
+	MIN_TRESH = 2.0 #kPa of vacuum (100 - 2 = 98 kPa abs at sea level)
 	while True:
-		# pdb.set_trace()
 		thestr = ser.readline(2000).decode('utf-8')
-		micros = int(thestr[0:thestr.find(',')])
-		press = float(thestr[thestr.find(',')+2:-1])
-
-
-		# press = float(ser.readline(1000).decode('utf-8'))
-		# ts = time.time()
+		p_counts = int(thestr[0:thestr.find(',')])
+		press_kpa = (0.92 - p_counts/1023.0) / 0.007652
+		micros = float(thestr[thestr.find(',')+2:-1])
 
 		# check start condition
-		if start_ts is None and press > MIN_TRESH:
+		if start_ts is None and press_kpa > MIN_TRESH:
 			print("Start condition")
 			start_ts = micros
 
 		# check timeout condition
 		if start_ts is not None:
-			if micros - start_ts > TIMEOUT:
+			if micros - start_ts > TIMEOUT_us:
 				break
 
 		#record and print data
 		if start_ts is not None:
-			dt = (micros - start_ts)/1000000.0
-			data.append((dt, press))
-			print("{}, {}".format(dt, press))
+			dt = (micros - start_ts) / 1000000.0
+			data.append((dt, press_kpa))
+			print("{}, {}".format(dt, press_kpa))
 
 
 	print("Processing Results...")
@@ -239,8 +237,7 @@ if __name__ == "__main__":
 	# pdb.set_trace()
 
 	fig = plot_vac_data(ts, delta_P, modeled_press)
-	fig2 = plt.figure()
-	# pdb.set_trace()
-	ax = fig2.add_subplot(1,1,1)
-	handles = ax.plot(pressure, dmdt, '.b')
+	# fig2 = plt.figure()
+	# ax = fig2.add_subplot(1,1,1)
+	# handles = ax.plot(pressure, dmdt, '.b')
 	plt.show(block=True)
