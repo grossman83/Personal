@@ -116,6 +116,19 @@ def plot_vac_data(ts, delta_P, modeled_press=None):
 
 # def plot_pump_curve(max_delta_P, flow_coeff)
 
+def calc_pump_curve(TEST_VOLUME, ts, modeled_press):
+	dt = np.array(ts)[1:] - np.array(ts)[0:-1]
+	dP = modeled_press[1:] - modeled_press[0:-1]
+
+	#now calculate every mass flow for every timestamp based on the test volume
+	#PV=nRT
+	#n = PV/RT
+	moles = (modeled_press * TEST_VOLUME) / (IDEAL_GAS * TEST_TEMPERATURE)
+	dm = moles[1:] - moles[0:-1]
+	dt = np.array(ts[1:]) - np.array(ts[0:-1])
+	dmdt = dm/dt
+	
+	return dmdt, np.flip(modeled_press[0:-1], 0)
 
 def setup_opts():
 	parser = argparse.ArgumentParser(description="Vacuum Plot")
@@ -175,7 +188,7 @@ if __name__ == "__main__":
 
 	data = []
 	start_ts = None
-	TIMEOUT = 1000000 #seconds after start detected
+	TIMEOUT = 2000000 #seconds after start detected
 	MIN_TRESH = 3.0 #kPa of vacuum (100 - 2 = 98 kPa abs at sea level)
 	while True:
 		# pdb.set_trace()
@@ -204,7 +217,6 @@ if __name__ == "__main__":
 			print("{}, {}".format(dt, press))
 
 
-	# pdb.set_trace()
 	print("Processing Results...")
 	ts, delta_P = zip(*data)
 	result = process_flowrate_data(TEST_VOLUME, ts, delta_P)
@@ -216,6 +228,19 @@ if __name__ == "__main__":
 	time_offset = result['time_offset']
 	modeled_press = np.array([model_pressure(flow_coeff, TEST_VOLUME, t+time_offset, max_delta_P) for t in ts])
 
-	fig = plot_vac_data(ts, delta_P, modeled_press)
+	#need to calculate pump curves. Pump curves are usually flow rate on the
+	#horizontal axis and pressure on the vertical axis. In most pump curves
+	#I've seen they're for incompressible fluids and as such flow rate [GPM l/s or other]
+	# is equivalent to mass flow. Here we will do mass flow rate.
 
+
+
+	dmdt, pressure = calc_pump_curve(TEST_VOLUME, ts, modeled_press)
+	# pdb.set_trace()
+
+	fig = plot_vac_data(ts, delta_P, modeled_press)
+	fig2 = plt.figure()
+	# pdb.set_trace()
+	ax = fig2.add_subplot(1,1,1)
+	handles = ax.plot(pressure, dmdt, '.b')
 	plt.show(block=True)
