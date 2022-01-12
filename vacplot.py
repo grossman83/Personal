@@ -116,8 +116,6 @@ def plot_vac_data(ts, delta_P, modeled_press=None):
 def bits2pressure(bits):
 	return 
 
-# def plot_pump_curve(max_delta_P, flow_coeff)
-
 def calc_pump_curve(TEST_VOLUME, ts, modeled_press):
 	dt = np.array(ts)[1:] - np.array(ts)[0:-1]
 	dP = modeled_press[1:] - modeled_press[0:-1]
@@ -129,8 +127,8 @@ def calc_pump_curve(TEST_VOLUME, ts, modeled_press):
 	dm = moles[1:] - moles[0:-1]
 	dt = np.array(ts[1:]) - np.array(ts[0:-1])
 	dmdt = dm/dt
-	
-	return dmdt, np.flip(modeled_press[0:-1], 0)
+
+	return dmdt, modeled_press[0:-1]
 
 def setup_opts():
 	parser = argparse.ArgumentParser(description="Vacuum Plot")
@@ -239,5 +237,6 @@ if __name__ == "__main__":
 	fig = plot_vac_data(ts, delta_P, modeled_press)
 	# fig2 = plt.figure()
 	# ax = fig2.add_subplot(1,1,1)
-	# handles = ax.plot(pressure, dmdt, '.b')
+	# handles = plt.scatter(pressure[0:50], dmdt[0:50])
 	plt.show(block=True)
+	# pdb.set_trace()
