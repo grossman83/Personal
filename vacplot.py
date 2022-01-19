@@ -131,6 +131,26 @@ def calc_pump_curve(TEST_VOLUME, ts, modeled_press):
 
 	return dmdt, modeled_press[0:-1]
 
+def calc_max_flow(flow_coeff, max_delta_P):
+	#calculate peak "mass" flow in standard liters per second
+	#maximum flow will occur right at the start of the the fit of the exponential
+	#curve. The way we get to it is to calculate dP/dt. We then convert dP/dt to
+	#dn/dt (n is number of moles remaining in TEST_VOLUME). From that we calculate
+	#max flow in Standard Liters per Second
+	t0 = 0
+	t1 = 0.001
+	p0 = ATM_PRESS - model_pressure(flow_coeff, TEST_VOLUME, 0, max_delta_P)
+	p1 = ATM_PRESS - model_pressure(flow_coeff, TEST_VOLUME, 0.001, max_delta_P)
+	n0 = p0 * TEST_VOLUME / (8.31 * TEST_TEMPERATURE)
+	n1 = p1 * TEST_VOLUME / (8.31 * TEST_TEMPERATURE)
+	dt = t1-t0
+	dndt = (n0-n1)/(t1-t0)#moles/second evacuation rate at start
+
+	max_flow = dndt * IDEAL_GAS * (TEST_TEMPERATURE/STD_TEMPERATURE)
+
+	# pdb.set_trace()
+	return max_flow
+
 def setup_opts():
 	parser = argparse.ArgumentParser(description="Vacuum Plot")
 
@@ -219,8 +239,6 @@ if __name__ == "__main__":
 	result = process_flowrate_data(TEST_VOLUME, ts, delta_P)
 	# pp.pprint(result)
 
-
-	# pdb.set_trace()
 	#generate the model fit points
 	flow_coeff = result['flow_coeff']
 	max_delta_P = result['max_delta_P']
@@ -232,20 +250,16 @@ if __name__ == "__main__":
 	#I've seen they're for incompressible fluids and as such flow rate [GPM l/s or other]
 	# is equivalent to mass flow. Here we will do mass flow rate.
 
+	mols = TEST_VOLUME / (IDEAL_GAS * TEST_TEMPERATURE / STD_TEMPERATURE)
+	max_dpdt = max_delta_P / (mols * flow_coeff) #kPa/second
+	dndt = (max_dpdt * 0.75) / (8.31 * 293)
+	max_flow_theoretical = dndt * IDEAL_GAS * (TEST_TEMPERATURE/STD_TEMPERATURE)
 
-	# pdb.set_trace()
-	#calculate peak "mass" flow in standard liters per second
-	p0 = ATM_PRESS - modeled_press[0]
-	p1 = ATM_PRESS - modeled_press[1]
-	n0 = TEST_VOLUME * (STD_TEMPERATURE / TEST_TEMPERATURE) * p0 / ATM_PRESS
-	n1 = TEST_VOLUME * (STD_TEMPERATURE / TEST_TEMPERATURE) * p1 / ATM_PRESS
-	dt = ts[1]-ts[0]
-	dndt = (n0-n1)/ts[1]-ts[0]#moles/second evacuation rate at start
 
-	max_flow = dndt * IDEAL_GAS * (STD_TEMPERATURE / TEST_TEMPERATURE)
-	print("Max Flow [l/s]: %.2f" % max_flow)
+	max_flow = calc_max_flow(flow_coeff, max_delta_P)
+	print("Max Flow Theoretical [l/s]: %.2f" % max_flow_theoretical)
+	print("Max Flow Numerical [l/s]: %.2f" % max_flow)
 	print("Max Delta P [kPa]: %.2f" % max_delta_P)
-
 
 
 	#calculation of pump curve yields a straight line. I think this is because we've
@@ -260,5 +274,3 @@ if __name__ == "__main__":
 	# handles = plt.scatter(abs_pressure[0:50], mps[0:50])
 	plt.show(block=True)
 	# pdb.set_trace()
-
-	# print("%.2f" % a)
