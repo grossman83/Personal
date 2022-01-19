@@ -27,7 +27,6 @@ def model_pressure(flow_coeff, volume, time, max_delta_P):
 	press = max_delta_P * (1 - np.exp(-time / (flow_coeff * mols)))
 	return press
 
-
 def process_flowrate_data(volume, time, delta_P):
 	""" expects timeseries data
 		time is an iterable of time data in seconds
@@ -84,15 +83,17 @@ def process_flowrate_data(volume, time, delta_P):
 	flow_coeff = result['x'][0]
 	time_offset = result['x'][1]
 
-	max_flow = (IDEAL_GAS * TEST_TEMPERATURE / STD_TEMPERATURE) / flow_coeff
+
+	# I believe this way of calculating max flow isn't quite correct. New attempt below.
+	#max_flow = (IDEAL_GAS * TEST_TEMPERATURE / STD_TEMPERATURE) / flow_coeff
+
 
 	return {
 		'flow_coeff': flow_coeff,
 		'max_delta_P': max_delta_P,
-		'max_flow': max_flow,
+		# 'max_flow': max_flow,
 		'time_offset': time_offset,
 	}
-
 
 def plot_vac_data(ts, delta_P, modeled_press=None):
 	""" Generate a plot of the
@@ -210,14 +211,16 @@ if __name__ == "__main__":
 		if start_ts is not None:
 			dt = (micros - start_ts) / 1000000.0
 			data.append((dt, press_kpa))
-			print("{}, {}".format(dt, press_kpa))
+			# print("{}, {}".format(dt, press_kpa))
 
 
 	print("Processing Results...")
 	ts, delta_P = zip(*data)
 	result = process_flowrate_data(TEST_VOLUME, ts, delta_P)
-	pp.pprint(result)
+	# pp.pprint(result)
 
+
+	# pdb.set_trace()
 	#generate the model fit points
 	flow_coeff = result['flow_coeff']
 	max_delta_P = result['max_delta_P']
@@ -230,13 +233,32 @@ if __name__ == "__main__":
 	# is equivalent to mass flow. Here we will do mass flow rate.
 
 
-
-	dmdt, pressure = calc_pump_curve(TEST_VOLUME, ts, modeled_press)
 	# pdb.set_trace()
+	#calculate peak "mass" flow in standard liters per second
+	p0 = ATM_PRESS - modeled_press[0]
+	p1 = ATM_PRESS - modeled_press[1]
+	n0 = TEST_VOLUME * (STD_TEMPERATURE / TEST_TEMPERATURE) * p0 / ATM_PRESS
+	n1 = TEST_VOLUME * (STD_TEMPERATURE / TEST_TEMPERATURE) * p1 / ATM_PRESS
+	dt = ts[1]-ts[0]
+	dndt = (n0-n1)/ts[1]-ts[0]#moles/second evacuation rate at start
+
+	max_flow = dndt * IDEAL_GAS * (STD_TEMPERATURE / TEST_TEMPERATURE)
+	print("Max Flow [l/s]: %.2f" % max_flow)
+	print("Max Delta P [kPa]: %.2f" % max_delta_P)
+
+
+
+	#calculation of pump curve yields a straight line. I think this is because we've
+	#forced everything to an exponential and we're essentially calculating R when we
+	#calculate the pump curve. This portion of thecode can be fixed resurrected at some
+	# later date.
+	# mps, vac = calc_pump_curve(TEST_VOLUME, ts, modeled_press)
 
 	fig = plot_vac_data(ts, delta_P, modeled_press)
 	# fig2 = plt.figure()
 	# ax = fig2.add_subplot(1,1,1)
-	# handles = plt.scatter(pressure[0:50], dmdt[0:50])
+	# handles = plt.scatter(abs_pressure[0:50], mps[0:50])
 	plt.show(block=True)
 	# pdb.set_trace()
+
+	# print("%.2f" % a)
