@@ -243,7 +243,7 @@ if __name__ == "__main__":
 	flow_coeff = result['flow_coeff']
 	max_delta_P = result['max_delta_P']
 	time_offset = result['time_offset']
-	modeled_press = np.array([model_pressure(flow_coeff, TEST_VOLUME, t+time_offset, max_delta_P) for t in ts])
+	# modeled_press = np.array([model_pressure(flow_coeff, TEST_VOLUME, t+time_offset, max_delta_P) for t in ts])
 
 	#need to calculate pump curves. Pump curves are usually flow rate on the
 	#horizontal axis and pressure on the vertical axis. In most pump curves
@@ -252,13 +252,13 @@ if __name__ == "__main__":
 
 	mols = TEST_VOLUME / (IDEAL_GAS * TEST_TEMPERATURE / STD_TEMPERATURE)
 	max_dpdt = max_delta_P / (mols * flow_coeff) #kPa/second
-	dndt = (max_dpdt * 0.75) / (8.31 * 293)
-	max_flow_theoretical = dndt * IDEAL_GAS * (TEST_TEMPERATURE/STD_TEMPERATURE)
+	dndt = (max_dpdt * 0.75) / (8.31 * 293) #moles/second
+	max_flow_theoretical = dndt * IDEAL_GAS * (TEST_TEMPERATURE/STD_TEMPERATURE) #liters/s
 
 
-	max_flow = calc_max_flow(flow_coeff, max_delta_P)
-	print("Max Flow Theoretical [l/s]: %.2f" % max_flow_theoretical)
-	print("Max Flow Numerical [l/s]: %.2f" % max_flow)
+	# max_flow = calc_max_flow(flow_coeff, max_delta_P)
+	print("Max Flow [l/s]: %.2f" % max_flow_theoretical)
+	# print("Max Flow Numerical [l/s]: %.2f" % max_flow)
 	print("Max Delta P [kPa]: %.2f" % max_delta_P)
 
 
