@@ -243,7 +243,7 @@ if __name__ == "__main__":
 	flow_coeff = result['flow_coeff']
 	max_delta_P = result['max_delta_P']
 	time_offset = result['time_offset']
-	# modeled_press = np.array([model_pressure(flow_coeff, TEST_VOLUME, t+time_offset, max_delta_P) for t in ts])
+	modeled_press = np.array([model_pressure(flow_coeff, TEST_VOLUME, t+time_offset, max_delta_P) for t in ts])
 
 	#need to calculate pump curves. Pump curves are usually flow rate on the
 	#horizontal axis and pressure on the vertical axis. In most pump curves
