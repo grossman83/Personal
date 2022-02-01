@@ -11,7 +11,31 @@
 // Reference Material
 //https://github.com/rlogiacco/CircularBuffer
 
-char filename[] = "31JAN2021 1902PDT.CSV";
+/*HOW TO USE
+ * CHANGE FILENAME TO SOMETHING APPROPRIATE. THIS WILL APPEND TO LAST FILE
+ * IF FILENAME IS NOT CHANGED.
+ * 
+ * IF CONNECTED TO A COMPUTER SET serialconn = 1 to see serial outputs
+ * IF NOT CONNECTED TO A COMPUTER SET serialconn = 0
+ * 
+ * 50% pwm blinks 10 times when waiting for button press
+ * hold button until LED goes solid
+ * once solid it's recording data and you can release button
+ * data recording is for a few seconds
+ * led blinks lightly and somewhat intermittently when writing data
+ * to SD card which occurs after recording.
+ * 
+ * you can remove SD card once the LED goes back to the 50% pwm slow (1s period)
+ * blink.
+ * 
+ * you can re-insert SD card when in this mode as well to take additional data
+ * 
+ * 
+ */
+
+
+
+char filename[] = "1FEB2022 1042PDT.CSV";
 const int btn = 23; //btn pin
 int btnState = 1;
 
@@ -128,6 +152,13 @@ void setup(void) {
   }
 
 
+  
+}
+
+
+
+void record_data(){
+
   //SD CARD STUFF
   delay(100);
   if (serialconn) {
@@ -141,11 +172,6 @@ void setup(void) {
   pinMode(led_pin, OUTPUT);
   pinMode(btn, INPUT_PULLUP);
   digitalWrite(led_pin, 0);
-}
-
-
-
-void record_data(){
   int record = 1;
   File dataFile = SD.open(filename, FILE_WRITE);
   if (dataFile) {
@@ -154,11 +180,15 @@ void record_data(){
     }
     digitalWrite(led_pin, record);
     int count = 0;
+    int t0 = 0;
     int ts = 0;
     while (record) {
+      if (count == 0){
+        t0 = micros();
+      }
       sensors_event_t a, g, temp;
       mpu.getEvent(&a, &g, &temp);
-      ts = micros();
+      ts = micros() - t0;
       ax_buff.push(a.acceleration.x);
       ay_buff.push(a.acceleration.y);
       az_buff.push(a.acceleration.z);
