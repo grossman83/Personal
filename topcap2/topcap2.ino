@@ -1,4 +1,6 @@
-#include "HX711.h"
+#include <HX711.h>
+
+//#include "HX711.h"
 
 // HX711 circuit wiring
 const int LOADCELL1_DOUT_PIN = 22;
@@ -27,13 +29,13 @@ void loop() {
   if (scale1.is_ready()) {
     long reading1 = scale1.read();
     mV1 = reading1 / 2040;
-    N1 = mV1/7.402/32.0;
+    N1 = mV1/7.402/32.0/2.0;
   }
 
   if (scale2.is_ready()) {
     long reading2 = scale2.read();
     mV2 = reading2 / 2040;
-    N2 = mV2/7.402/32.0;
+    N2 = mV2/7.402/32.0/2.0;
   }
 
   if(N1 != 0 && N2 !=0){
@@ -42,7 +44,7 @@ void loop() {
     Serial.println(N2);
   }
 
-  delay(20);
+  delay(10);
 
   //8,388,607
 }
