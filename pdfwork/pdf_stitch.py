@@ -42,21 +42,24 @@ if __name__ =='__main__':
 	# we can also get there by doing 1224/17 = 72
 	# that said there do appear to be some margins. This
 
-	page_actual_height = 736
-	page_actual_width = 1224
+	# page_actual_height = 736
+	# page_actual_width = 1224
 
 
 	# tabloid portrait
-	page_actual_height = 1223.0
-	page_actual_width = 792
+	# page_actual_height = 1223.0
+	# page_actual_width = 792
 
 	# letter landscape
 	# page_actual_height = 556.5
 	# page_actual_width = 745
 
 	# letter portrait
-	# page_actual_height = 687
-	# page_actual_width = 556.5
+	#72*11 = 792
+	#72*8.5 = 612
+
+	page_actual_height = 792
+	page_actual_width = 612
 
 	#Tabloid size paper 11x17 (landscape = 17x11)
 	#Mediabox size 1224, 792
