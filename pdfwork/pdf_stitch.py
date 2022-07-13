@@ -3,6 +3,7 @@ import math
 import os
 import pdb
 import sys
+import pdb
 
 # USAGE
 # This utility is designed to stitch together landscape pdfs of the 11x17 size
@@ -29,44 +30,40 @@ if __name__ =='__main__':
 	
 	infile_path = sys.argv[1]
 	outfile_path = sys.argv[2]
+	page_type = sys.argv[3]
+	orientation = sys.argv[4]
+
+	# pdb.set_trace()
+
 
 	root_path = os.path.expanduser('~')
 	infile_path = os.path.join(root_path, infile_path)
 	outfile_path = os.path.join(root_path, outfile_path)
 
-	#The height had to be hard coded. No-where in the pdf file could I find
-	#a value that matched the correct stitching value of 736 in the vertical.
-	#Similar story for the width.
 
-	#DPI does appear to be 72. We can get this by doing 792/11 = 72
-	# we can also get there by doing 1224/17 = 72
-	# that said there do appear to be some margins. This
+	if page_type == 'letter':
+		if orientation == 'portrait':
+			#letter - portrait
+			page_actual_height = 11*72
+			page_actual_width = 8.5*72
+		else:
+			#letter - landscape
+			page_actual_height = 8.5*72
+			page_actual_width = 11*72
+	elif page_type == 'tabloid':
+		if orientation == 'portrait':
+			#tabloid - portrait
+			page_actual_height = 17*72
+			page_actual_width = 11*72
+		else:
+			#tabloid - landscape
+			page_actual_height = 11*72
+			page_actual_width = 17*72
+	else:
+		print("error. We only do tabloid and landscape")
 
-	# page_actual_height = 736
-	# page_actual_width = 1224
+	pdb.set_trace()
 
-
-	# tabloid portrait
-	# page_actual_height = 1223.0
-	# page_actual_width = 792
-
-	# letter landscape
-	# page_actual_height = 556.5
-	# page_actual_width = 745
-
-	# letter portrait
-	#72*11 = 792
-	#72*8.5 = 612
-
-	page_actual_height = 792
-	page_actual_width = 612
-
-	#Tabloid size paper 11x17 (landscape = 17x11)
-	#Mediabox size 1224, 792
-
-	#Letter Size 8.5x11 or 11x8.5 landscape
-	#mediabox is 792x612
-	# creating a pdf File object of original pdf 
 	pdfFileObj = open(infile_path, 'rb') 
 
 	# creating a pdf Reader object 
@@ -84,14 +81,15 @@ if __name__ =='__main__':
 	page_width = trimboxes[0].getWidth()
 	page_height = trimboxes[0].getHeight()
 
-
+#******************
 	#set the total height of the pdf
-	page_buffer_tabloid = 52
-	page_ybuffer_letter = 0
-	page_xbuffer_letter = 55.5
-	total_height = num_pages * page_actual_height + page_ybuffer_letter
-	total_width = page_actual_width
-	total_width = page_actual_width * 4
+	# page_buffer_tabloid = 52
+	# page_ybuffer_letter = 0
+	# page_xbuffer_letter = 55.5
+	# total_height = num_pages * page_actual_height + page_ybuffer_letter
+	# total_width = page_actual_width
+	# total_width = page_actual_width * 4
+#********************
 
 	# pdb.set_trace()
 	#create an empty page the size of the total of the pages
