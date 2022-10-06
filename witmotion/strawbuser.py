@@ -12,11 +12,11 @@ import scipy.interpolate as interp
 if __name__ =='__main__':
 	
 	infile_path = sys.argv[1]
-	outfile_path = sys.argv[2]
+	# outfile_path = sys.argv[2]
 
 	root_path = os.path.expanduser('~')
 	infile_path = os.path.join(root_path, infile_path)
-	outfile_path = os.path.join(root_path, outfile_path)
+	# outfile_path = os.path.join(root_path, outfile_path)
 
 
 	with open(infile_path, newline='') as csvfile:
