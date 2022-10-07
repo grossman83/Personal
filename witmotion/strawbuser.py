@@ -22,13 +22,11 @@ if __name__ =='__main__':
 		spamreader = csv.reader(csvfile, delimiter=',')
 		timestamp = []
 		decimals = []
-		rawtime = []
 		ax = []
 		ay = []
 		az = []
 		for row in spamreader:
 			timestamp.append(datetime.strptime(row[0][0:-2], '%Y-%m-%d %H:%M:%S'))
-			rawtime.append(row[0])
 			decimals.append(np.int(row[0][-1]))
 			ax.append(float(row[2]))
 			ay.append(float(row[3]))
@@ -45,7 +43,7 @@ if __name__ =='__main__':
 		# rate and that this variation is inconsistent. I'm going to make
 		# all the timestamp correct by adding the decimals to them.
 
-		#chunk tghe data so that I manage chunks of the same timestamp. Then 
+		#chunk the data so that I manage chunks of the same timestamp. Then 
 		#grab the corresponding decimals.
 
 		#when seconds change... in case there are holes in the data
@@ -55,6 +53,7 @@ if __name__ =='__main__':
 		dc = np.array([decimals[i+1] - decimals[i] for i in range(len(decimals[:-1]))])
 		dc_changes1 = np.asarray(np.where(dc == 1)[0])
 		dc_changes9 = np.asarray(np.where(dc == -9)[0])
+		# dc_changes  = np.asarray(np.where(dc != 0)[0])
 
 		#all indices where the decimal changes
 		dc_changes =  np.sort(np.concatenate((dc_changes1, dc_changes9, [-1])))
@@ -76,43 +75,6 @@ if __name__ =='__main__':
 
 		zero_based_times = [k.seconds + k.microseconds/1000000 for k in zero_ts]
 
-
-
-
-		#now that i've got corrected
-
-		# pdb.set_trace()
-		# now for a little time math to properly space all the captured data
-		# in the time domain.
-		# decimals = np.array(decimals)
-		# dt = np.diff(decimals)
-		# dt = dt.tolist()
-		# first_micros = decimals[0]
-		# first_jump_index = min(dt.index(1), dt.index(-9))
-		# dt.reverse()
-		# last_jump_index = min(dt.index(1), dt.index(-9))
-		# last_micros = decimals[-1]
-
-		# dt0 = timedelta(microseconds= (int(first_micros)*100000 + (10 - first_jump_index) * 10000))
-		# dt_ = timedelta(microseconds= (int(last_micros)*100000 + last_jump_index*10000))
-
-		# start_time = timestamp[0] + dt0
-		# end_time = timestamp[-1] + dt_
-
-		# rec_time = end_time-start_time
-
-		# interval_us = int((rec_time.seconds * 1000000 + rec_time.microseconds)/len(timestamp))
-
-
-		#now that we have a start time and an end time and hence a total delta
-		#let's evenly spread every point between the start and the end.
-		# new_times = []
-		# for k in range(len(timestamp)):
-		# 	new_times.append(timestamp[0] + timedelta(microseconds=interval_us*k))
-
-		# zero_start_times = []
-		# for k in range(len(timestamp)):
-		# 	zero_start_times.append(interval_us*k)
 
 
 		a_rms = np.sqrt(ax**2 + ay**2 + az**2)
