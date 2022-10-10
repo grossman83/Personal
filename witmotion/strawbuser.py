@@ -67,19 +67,23 @@ if __name__ =='__main__':
 		corrected_ts = []
 		for chunk in dc_chunks:
 			tss = timestamp[chunk[0]:chunk[1]]
-			micros = np.linspace(0, 1000000,len(tss), dtype='int', endpoint=False)
-			for [ts, micros] in zip(tss, micros):
-				ts = ts + timedelta(microseconds = int(micros))
+			dcs = decimals[chunk[0]:chunk[1]]
+			micros = np.linspace(0, 100000,len(tss), dtype='int', endpoint=False)
+			# pdb.set_trace()
+			for [ts, dc, micro] in zip(tss, dcs, micros):
+				# pdb.set_trace()
+				ts = ts + timedelta(microseconds = int(micro) + 100000*dc)
 				corrected_ts.append(ts)
 		zero_ts = [k - corrected_ts[0] for k in corrected_ts]
 
 		zero_based_times = [k.seconds + k.microseconds/1000000 for k in zero_ts]
 
-
+		# pdb.set_trace()
 
 		a_rms = np.sqrt(ax**2 + ay**2 + az**2)
 		rec_time = np.max(zero_based_times)
 
+		# pdb.set_trace()
 
 		#we're going to create a sound file to show the accelerations
 		#experienced by the test berry.
