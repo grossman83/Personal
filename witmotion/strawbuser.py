@@ -115,9 +115,10 @@ if __name__ =='__main__':
 		fig = plt.figure(figsize=(8,6))
 		ax = fig.add_subplot(1,1,1)
 		ax.set_title("Acceleration vs Time")
-		# ax.set_xlabel("Time [s]")
 		ax.set_ylim([0,30])
 		ax.set_ylabel("RMS Acceleration [g]")
+		ax.tick_params(axis='y', colors='red')
+		ax.yaxis.label.set_color('red')
 		ax.plot(zero_start_times, a_rms, '-b')
 		plt.savefig(date_str + ".png", transparent = False)
 
