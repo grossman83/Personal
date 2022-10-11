@@ -25,6 +25,11 @@ if __name__ =='__main__':
 		ax = []
 		ay = []
 		az = []
+
+		w_timestamp = []
+		alpha = []
+		beta = []
+		gamma = []
 		for row in spamreader:
 			timestamp.append(datetime.strptime(row[0][0:-2], '%Y-%m-%d %H:%M:%S'))
 			decimals.append(np.int(row[0][-1]))
@@ -32,9 +37,21 @@ if __name__ =='__main__':
 			ay.append(float(row[3]))
 			az.append(float(row[4]))
 
+			try:
+				gamma.append(float(row[16]))
+				beta.append(float(row[15]))
+				alpha.append(float(row[14]))
+				w_timestamp.append(datetime.strptime(row[0][0:-2], '%Y-%m-%d %H:%M:%S'))
+			except:
+				pass
+
 		ax = np.array(ax)
 		ay = np.array(ay)
 		az = np.array(az)
+		alpha = np.array(alpha)
+		beta = np.array(beta)
+		gamma = np.array(gamma)
+		pdb.set_trace()
 
 		date_str = timestamp[0].strftime("%Y-%m-%d %H_%M_%S")
 
@@ -69,36 +86,24 @@ if __name__ =='__main__':
 			tss = timestamp[chunk[0]:chunk[1]]
 			dcs = decimals[chunk[0]:chunk[1]]
 			micros = np.linspace(0, 100000,len(tss), dtype='int', endpoint=False)
-			# pdb.set_trace()
 			for [ts, dc, micro] in zip(tss, dcs, micros):
-				# pdb.set_trace()
 				ts = ts + timedelta(microseconds = int(micro) + 100000*dc)
 				corrected_ts.append(ts)
 		zero_ts = [k - corrected_ts[0] for k in corrected_ts]
 
 		zero_based_times = [k.seconds + k.microseconds/1000000 for k in zero_ts]
 
-		# pdb.set_trace()
-
 		a_rms = np.sqrt(ax**2 + ay**2 + az**2)
 		rec_time = np.max(zero_based_times)
 
-		# pdb.set_trace()
 
 		#we're going to create a sound file to show the accelerations
 		#experienced by the test berry.
 		rate = 44100 #samples per second
-		# T = rec_time.seconds + rec_time.microseconds / 1000000
 		T = rec_time
 		f = 800.0 # sound frequency [Hz]
 		t = np.linspace(0, T, int(T*rate))
 		x=0.1 * np.sin(2*np.pi*f*t)
-
-		#now reinterpolate the accelerations onto the length array as the sound
-		#data.
-		# zero_start_times = []
-		# for k in range(len(timestamp)):
-		# 	zero_start_times.append(interval_us*k/1000000)
 		
 		zero_start_times = zero_based_times
 
@@ -109,40 +114,40 @@ if __name__ =='__main__':
 		mixed = a_audio * x
 		wavio.write(date_str + ".wav", mixed, rate, sampwidth=3)
 
-		# pdb.set_trace()
 
-
-		fig = plt.figure(figsize=(8,6))
+		fig = plt.figure(figsize=(16,12))
 		ax = fig.add_subplot(1,1,1)
 		ax.set_title("Acceleration vs Time")
 		ax.set_ylim([0,30])
 		ax.set_ylabel("RMS Acceleration [g]")
 		ax.tick_params(axis='y', colors='red')
 		ax.yaxis.label.set_color('red')
-		ax.plot(zero_start_times, a_rms, '-b')
+		ax.plot(zero_start_times, a_rms, '.r', markersize=5)
+		ax.plot(zero_start_times, a_rms, '-b', markersize=1)
 		plt.savefig(date_str + ".png", transparent = False)
+		# plt.ion()
+		# plt.show()
 
 
 
 		video_duration = np.max(zero_start_times)
-		fps = 29.97
-		num_frames = int(video_duration*fps)
+		fps = 30
+		num_frames = int(np.round(video_duration*fps))
 		pts_per_frame = len(a_rms)/num_frames
 		pts_per_second = fps*pts_per_frame
 		fps=1
 
-
+		# pdb.set_trace()
 		# creating gif so I can overlay it with the video
 		metadata = dict(title='Movie', artist='Marc')
 		writer = PillowWriter(fps=fps, metadata=metadata)
 
-
-		with writer.saving(fig, date_str + '.gif', 100):
+		with writer.saving(fig, date_str + '.gif', 200):
 			first_pt = 0
 			for xval in range(int(max(zero_start_times))):
 			# for xval in range(100):
 				writer.grab_frame(transparent = True)
-				scatter = ax.plot([xval], [1], '.r')
+				scatter = ax.plot([xval], [0], '.g', markersize=10)
 				print(xval/max(zero_start_times))
 
 		
