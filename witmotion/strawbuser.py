@@ -41,9 +41,11 @@ if __name__ =='__main__':
 				gamma.append(float(row[16]))
 				beta.append(float(row[15]))
 				alpha.append(float(row[14]))
-				w_timestamp.append(datetime.strptime(row[0][0:-2], '%Y-%m-%d %H:%M:%S'))
+				# w_timestamp.append(datetime.strptime(row[0][0:-2], '%Y-%m-%d %H:%M:%S'))
 			except:
-				pass
+				gamma.append(np.nan)
+				beta.append(np.nan)
+				alpha.append(np.nan)
 
 		ax = np.array(ax)
 		ay = np.array(ay)
@@ -51,10 +53,8 @@ if __name__ =='__main__':
 		alpha = np.array(alpha)
 		beta = np.array(beta)
 		gamma = np.array(gamma)
-		pdb.set_trace()
 
 		date_str = timestamp[0].strftime("%Y-%m-%d %H_%M_%S")
-
 
 		# it appears that the captured data may vary significantly in capture
 		# rate and that this variation is inconsistent. I'm going to make
@@ -94,6 +94,8 @@ if __name__ =='__main__':
 		zero_based_times = [k.seconds + k.microseconds/1000000 for k in zero_ts]
 
 		a_rms = np.sqrt(ax**2 + ay**2 + az**2)
+		w_rms = np.sqrt(alpha**2 + beta**2 + gamma**2) * np.pi/180.
+		w_rms = np.convolve(w_rms, np.ones(100)/100, mode='same')
 		rec_time = np.max(zero_based_times)
 
 
@@ -122,11 +124,17 @@ if __name__ =='__main__':
 		ax.set_ylabel("RMS Acceleration [g]")
 		ax.tick_params(axis='y', colors='red')
 		ax.yaxis.label.set_color('red')
+		secax_y = ax.secondary_yaxis('right')
+		secax_y.set_ylabel('Omega [rad/s]')
+		secax_y.set_ylim([0,100])
+		secax_y.tick_params(axis='y', colors='cyan')
+		secax_y.yaxis.label.set_color('cyan')
 		ax.plot(zero_start_times, a_rms, '.r', markersize=5)
 		ax.plot(zero_start_times, a_rms, '-b', markersize=1)
+		ax.plot(zero_start_times, w_rms, '.c', markersize=2)
 		plt.savefig(date_str + ".png", transparent = False)
-		# plt.ion()
-		# plt.show()
+		plt.ion()
+		plt.show()
 
 
 
@@ -137,7 +145,6 @@ if __name__ =='__main__':
 		pts_per_second = fps*pts_per_frame
 		fps=1
 
-		# pdb.set_trace()
 		# creating gif so I can overlay it with the video
 		metadata = dict(title='Movie', artist='Marc')
 		writer = PillowWriter(fps=fps, metadata=metadata)
@@ -145,7 +152,6 @@ if __name__ =='__main__':
 		with writer.saving(fig, date_str + '.gif', 200):
 			first_pt = 0
 			for xval in range(int(max(zero_start_times))):
-			# for xval in range(100):
 				writer.grab_frame(transparent = True)
 				scatter = ax.plot([xval], [0], '.g', markersize=10)
 				print(xval/max(zero_start_times))
