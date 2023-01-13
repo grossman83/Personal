@@ -52,7 +52,6 @@ if __name__ =='__main__':
 					alpha.append(np.nan)
 
 		micros = np.array(micros)
-		# pdb.set_trace()
 		micros = micros - micros[0]
 		ax = np.array(ax)
 		ay = np.array(ay)
@@ -82,6 +81,9 @@ if __name__ =='__main__':
 		
 		zero_start_times = zero_based_times
 
+		data_rate = int(len(zero_based_times)/max(zero_based_times))
+		print("Average Data Rate: " + repr(data_rate))
+
 		
 
 		a_interp = interp.interp1d(zero_start_times, a_rms, kind='linear', fill_value=0)
@@ -94,7 +96,7 @@ if __name__ =='__main__':
 		plt.ion()
 		fig = plt.figure(figsize=(16,9))
 		ax = fig.add_subplot(1,1,1)
-		ax.set_title("Acceleration vs Time")
+		ax.set_title("Acceleration vs Time" + "\n" + "Avg Data Rate: " + repr(data_rate) + "Hz")
 		ax.set_ylim([0,30])
 		ax.set_ylabel("RMS Acceleration [g]")
 		ax.tick_params(axis='y', colors='red')
@@ -109,7 +111,8 @@ if __name__ =='__main__':
 		ax.plot(zero_start_times, w_rms, '.c', markersize=2)
 		plt.savefig(date_str + ".png", transparent = False)
 
-		# plt.show()
+		plt.show()
+		pdb.set_trace()
 
 		# video_duration = np.max(zero_start_times)
 		# fps = 30
@@ -118,7 +121,6 @@ if __name__ =='__main__':
 		# pts_per_second = fps*pts_per_frame
 		fps=1
 
-		pdb.set_trace()
 
 		# creating gif so I can overlay it with the video
 		metadata = dict(title='Movie', artist='Marc')
