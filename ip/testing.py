@@ -12,6 +12,8 @@ if __name__ =='__main__':
 	#create an array of 50x50x3 between 0 and 255
 	blah = np.random.randint(0,255, (100,100,3), dtype=np.uint8)
 
+	#now bit-shift
+
 
 	pdb.set_trace()
 
