@@ -3,9 +3,9 @@
 int red = 23;
 int green = 22;
 
-float m_24V = A0;
-float m_5V = A1;
-float m_4V5 = A2;
+float m_24V = A0; // pin to measure 24V
+float m_5V = A1; // pin to measure 5V
+float m_4V5 = A2; // measure 4.5V
 float V24 = 0;
 float V5 = 0;
 float V4v5 = 0;
@@ -109,6 +109,7 @@ void sw_case(){
     case 2:
       Serial.println("Test results:");
       Serial.println("24V\t5V\t4.5V\tULN1\tULN2\tULN3\tULN4\tULN5\tULN6\tINA\tFP\tVAC\tCAN\t");
+      delay(1000);
       V24 = analogRead(m_24V);
       V24 = (((V24*3.3)/1024)*11.00244498);
       //Serial.print("24V =");
@@ -190,14 +191,24 @@ void sw_case(){
     break;
 
     case 6:
+        for(int i=0; i<2; i++){
+          digitalWrite(v_ctl1, HIGH);
+          digitalWrite(v_ctl2, HIGH);
+          digitalWrite(v_ctl3, HIGH);
+          digitalWrite(v_ctl4, HIGH);
+          digitalWrite(v_ctl5, HIGH);
+          digitalWrite(v_ctl6, HIGH);
+          delay(200);
+          digitalWrite(v_ctl1, LOW);
+          digitalWrite(v_ctl2, LOW);
+          digitalWrite(v_ctl3, LOW);
+          digitalWrite(v_ctl4, LOW);
+          digitalWrite(v_ctl5, LOW);
+          digitalWrite(v_ctl6, LOW);
+          delay(200);
+        }
         //Serial.println("ULN test:");
-        digitalWrite(v_ctl1, LOW);
-        digitalWrite(v_ctl2, LOW);
-        digitalWrite(v_ctl3, LOW);
-        digitalWrite(v_ctl4, LOW);
-        digitalWrite(v_ctl5, LOW);
-        digitalWrite(v_ctl6, LOW);
-
+        
         digitalWrite(v_ctl1, LOW);
         delay(100);
         if((digitalRead(ctl1) == HIGH)){
@@ -219,6 +230,7 @@ void sw_case(){
         }
         digitalWrite(v_ctl1, LOW);
 
+        //#####################################
 
         digitalWrite(v_ctl2, LOW);
         delay(100);
@@ -337,13 +349,7 @@ void sw_case(){
 
     case 7:
       //Serial.println("INNA test:");
-      o_touch = analogRead(touchsens);
-      delay(100);
-      o_touch = analogRead(touchsens);
-      delay(100);
-      o_touch = analogRead(touchsens);
-      delay(100);
-      o_touch = analogRead(touchsens);
+      // *marc makes no sense to read touchsens 4 times with delays... and not average or anything.
       delay(100);
       o_touch = analogRead(touchsens);
       o_touch = (((o_touch*3.3)/1024)*1000);
@@ -370,11 +376,6 @@ void sw_case(){
       //digitalWrite(VACsens, HIGH);
       delay(100);
       //Serial.println("Sens:");
-      analogRead(m_fingerprint);
-      analogRead(m_fingerprint);
-      analogRead(m_fingerprint);
-      analogRead(m_fingerprint);
-      analogRead(m_fingerprint);
       Fingprint = analogRead(m_fingerprint);
       Fingprint = ((Fingprint*3.3)/1024);
       //Serial.print("Fingerprint=");
@@ -382,11 +383,7 @@ void sw_case(){
       Serial.print("\t");
       delay(1000);
 
-      analogRead(m_VACsens);
-      analogRead(m_VACsens);
-      analogRead(m_VACsens);
-      analogRead(m_VACsens);
-      analogRead(m_VACsens);
+      // * marc: makes no sense to read 5 times and only keep the last value.
       vacs = analogRead(m_VACsens);
       vacs = ((vacs*3.3)/1024);
       //Serial.print("vacsens=");
