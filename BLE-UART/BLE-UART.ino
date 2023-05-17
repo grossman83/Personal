@@ -14,35 +14,10 @@
 #include <bluefruit.h>
 #include <Adafruit_LittleFS.h>
 #include <InternalFileSystem.h>
-#include <LSM6DS3.h>
-#include <Wire.h>
-#include <avr/dtostrf.h>
 
-#define LSM6DS3_ADDRESS 0x6A
-
-LSM6DS3 myIMU(I2C_MODE, LSM6DS3_ADDRESS);    //I2C device address 0x6A
 
 const int analogInPin = A0;  // Analog input pin that the potentiometer is attached to
-const int LEDR = 11;
-const int LEDG = 12;
-const int LEDB = 13;
-
-unsigned long micro_count = 0;
-
 int sensorValue = 0;  // value read from the pot
-
-float x = 0;
-float y = 0;
-float z = 0;
-
-float g = 0;
-
-char xvalstr[8];
-char yvalstr[8];
-char zvalstr[8];
-char gvalstr[8];
-char micros_str[10];
-char text_str[16];
 
 // BLE Service
 BLEDfu  bledfu;  // OTA DFU service
@@ -53,13 +28,6 @@ BLEBas  blebas;  // battery
 void setup()
 {
   Serial.begin(115200);
-
-
-  if (myIMU.begin() != 0) {
-        Serial.println("Device error");
-    } else {
-        Serial.println("Device OK!");
-    }
 
 #if CFG_DEBUG
   // Blocking wait for connection when debug mode is enabled via IDE
@@ -137,55 +105,36 @@ void startAdv(void)
 
 void loop()
 {
-  //Forward data from HW Serial to BLEUART
-  // while (Serial.available())
-  // {
-  //   // Delay to wait for enough input, since we have a limited transmission buffer
-  //   delay(2);
-
-  //   uint8_t buf[64];
-  //   int count = Serial.readBytes(buf, sizeof(buf));
-  //   bleuart.write( buf, count );
-
-  //   sensorValue = analogRead(analogInPin);
-  //   // int count = sizeof(sensorValue);
-  //   // bleuart.write(sensorValue, count);
-  // }
-
-  while(1)
+  Forward data from HW Serial to BLEUART
+  while (Serial.available())
   {
-    x = myIMU.readFloatAccelX();
-    y = myIMU.readFloatAccelY();
-    z = myIMU.readFloatAccelZ();
+    // Delay to wait for enough input, since we have a limited transmission buffer
+    delay(2);
 
-    g = sqrt(x*x + y*y + z*z);
-    micro_count = micros();
-    
-    
-    //working**********
-    // bleuart.write("x: ");  
-    // bleuart.write((uint8_t*)xvalstr, strlen(xvalstr));  // Send the string over BLE
-    // bleuart.write("\n");
-    // bleuart.write("y: ");
-    // bleuart.write((uint8_t*)yvalstr, strlen(yvalstr));  // Send the string over BLE
-    // bleuart.write("\n");
-    // bleuart.write("z: ");
-    // bleuart.write((uint8_t*)zvalstr, strlen(zvalstr));  // Send the string over BLE
-    // bleuart.write("\n");
-    //working***********
-    ultoa(micro_count, micros_str, 10);
-    dtostrf(g, 5, 2, gvalstr);
+    uint8_t buf[64];
+    int count = Serial.readBytes(buf, sizeof(buf));
+    bleuart.write( buf, count );
 
-    // strcpy(text_str, micros_str); // Copy the first string to the target buffer
-    // strcat(text_str, ", "); // Concatenate the second string to the target buffer
-    strcat(text_str, gvalstr); // Concatenate the third string to the target buffer
-    strcat(text_str, "\n"); // Concatenate the fourth string to the target buffer
-    bleuart.write((uint8_t*)text_str, strlen(text_str));  // Send the string over BLE
-
-    delay(10);
-
+    sensorValue = analogRead(analogInPin);
+    // int count = sizeof(sensorValue);
+    // bleuart.write(sensorValue, count);
   }
 
+
+  //this isn't working.
+  // while(1){
+  //   sensorValue = analogRead(analogInPin);
+  //   int count = sizeof(sensorValue);
+  //   bleuart.write(sensorValue, count);
+  // }
+
+  // Forward from BLEUART to HW Serial
+  while ( bleuart.available() )
+  {
+    uint8_t ch;
+    ch = (uint8_t) bleuart.read();
+    Serial.write(ch);
+  }
 }
 
 // callback invoked when central connects
