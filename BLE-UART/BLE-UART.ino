@@ -105,7 +105,7 @@ void startAdv(void)
 
 void loop()
 {
-  Forward data from HW Serial to BLEUART
+  //Forward data from HW Serial to BLEUART
   while (Serial.available())
   {
     // Delay to wait for enough input, since we have a limited transmission buffer
