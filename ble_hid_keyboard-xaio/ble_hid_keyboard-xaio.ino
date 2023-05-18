@@ -10,6 +10,9 @@
  MIT license, check LICENSE for more information
  All text above, and the splash screen below must be included in
  any redistribution
+
+
+ ** it's working **
 *********************************************************************/
 #include <bluefruit.h>
 
