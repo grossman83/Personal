@@ -34,14 +34,16 @@ def get_window(window_width, window_height, corner):
 
 
 #move the window forward
-def move_window(window, x_trans):
-	sg.affinity.translate(window, x_trans, 0, 0)
-	return window
+def move_windows(windows, x_trans):
+	new_windows = []
+	for w in windows:
+		new_windows.append(sg.affinity.translate(w, x_trans, 0, 0))
+	return new_windows
 
 def calc_window_time(windows, apples):
 	window_time = []
 	for window in windows:
-		num_apples = len(window.contains(apples))
+		num_apples = sum(window.contains(apples))
 		window_time.append(num_apples)
 	return window_time
 
@@ -62,6 +64,37 @@ r3_window = get_window(window_width, window_height, r3_corner)
 windows = [r1_window, r2_window, r3_window]
 
 apples_in_window = r1_window.contains(apples)
+
+
+
+#now move the windows across the scene and count the number of
+#apples in each window at each incremental step.
+
+x_increment = 0.1#meters
+num_increments = 60.0/x_increment
+
+
+counts = []
+for k in range(int(num_increments)):
+	counts.append(calc_window_time(windows, apples))
+	#move the window forward some increment
+	windows = move_windows(windows, 0.1)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
