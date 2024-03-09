@@ -1,6 +1,7 @@
 import numpy as np
 import shapely as sg
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 import pdb
 
 
@@ -84,33 +85,23 @@ for k in range(int(num_increments)):
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 #make the points and polygon (window) into plotly compatible objects
 apple_pts = [[sg.get_x(k), sg.get_y(k)] for k in apples]
 
 
+
+fig = make_subplots(rows=2, cols=1)
 
 #plot the apples
 point_trace = go.Scatter(
 	x = [k[0] for k in apple_pts],
 	y = [k[1] for k in apple_pts],
 	mode="markers",
-	marker = dict(size=10, color="red"),
+	marker = dict(size=3, color="red"),
 	name="Point",
 )
+
+fig.add_trace(point_trace, row=1, col=1)
 
 #plot the polygons
 polygons = []
@@ -124,13 +115,26 @@ for w in windows:
 		line=dict(color="blue"),
 		name="Polygon",
 	)
-	polygons.append(polygon)
+	# polygons.append(polygon)
+	fig.add_trace(polygon, row=1, col=1)
 
-polygons.append(point_trace)
 
-fig = go.Figure(data= polygons)
 
-fig.update_layout(xaxis=dict(range=[0, 60]), yaxis=dict(range=[0, 4]))
+# for poly_trace in polygons:
+	# fig.add_trace(poly_trace, row=1, col=1)
+
+xs = np.arange(0,60, 0.1)
+
+fig.add_trace(go.Scatter(x=xs, y=[k[0] for k in counts], mode='lines', name='Plot2'), row=2, col=1)
+fig.add_trace(go.Scatter(x=xs, y=[k[1] for k in counts], mode='lines', name='Plot2'), row=2, col=1)
+fig.add_trace(go.Scatter(x=xs, y=[k[2] for k in counts], mode='lines', name='Plot2'), row=2, col=1)
+
+
+
+
+# fig = go.Figure(data=polygons)
+
+fig.update_layout(xaxis=dict(range=[0, 65]), yaxis=dict(range=[0, 4]))
 
 fig.show()
 
