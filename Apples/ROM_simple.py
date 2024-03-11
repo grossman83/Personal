@@ -20,7 +20,8 @@ def get_apples():
 	miny = 0
 	maxy = 3.5
 
-	apple_ys = np.random.rand(num_apples) * maxy
+	# apple_ys = np.random.rand(num_apples) * maxy
+	apple_ys = np.random.normal(1.5, 1, num_apples)
 	apple_xs = np.random.rand(num_apples) * maxx
 
 	apple_pts  = sg.points(np.column_stack((apple_xs,apple_ys)))
@@ -53,9 +54,9 @@ def calc_window_time(windows, apples):
 
 window_width = 1.5
 window_height = 1.0
-r1_corner = [0, 0.75]
-r2_corner = [0, 1.75]
-r3_corner = [0, 2.75]
+r1_corner = [0, 0]
+r2_corner = [0, 1.0]
+r3_corner = [0, 2.0]
 
 apples = get_apples()
 r1_window = get_window(window_width, window_height, r1_corner)
@@ -105,14 +106,16 @@ fig.add_trace(point_trace, row=1, col=1)
 
 #plot the polygons
 polygons = []
-for w in windows:
+colors = ['red', 'green', 'blue']
+fill_colors = ['rgba(255,0,0,0.25)', 'rgba(0,255,0,0.25)', 'rgba(0,0,255,0.25)']
+for w in zip(windows, colors, fill_colors):
 	polygon = go.Scatter(
-		x=[k[0] for k in sg.get_coordinates(w)],
-		y=[k[1] for k in sg.get_coordinates(w)],
+		x=[k[0] for k in sg.get_coordinates(w[0])],
+		y=[k[1] for k in sg.get_coordinates(w[0])],
 		mode="lines",
 		fill="toself",
-		fillcolor='rgba(173, 216, 230, 0.5)',
-		line=dict(color="blue"),
+		fillcolor=w[2],
+		line=dict(color=w[1]),
 		name="Polygon",
 	)
 	# polygons.append(polygon)
@@ -125,10 +128,19 @@ for w in windows:
 
 xs = np.arange(0,60, 0.1)
 
-fig.add_trace(go.Scatter(x=xs, y=[k[0] for k in counts], mode='lines', name='Plot2'), row=2, col=1)
-fig.add_trace(go.Scatter(x=xs, y=[k[1] for k in counts], mode='lines', name='Plot2'), row=2, col=1)
-fig.add_trace(go.Scatter(x=xs, y=[k[2] for k in counts], mode='lines', name='Plot2'), row=2, col=1)
+fig.add_trace(go.Scatter(x=xs, y=[k[0] for k in counts], mode='lines', name='Apple_Count1', marker_color='lightcoral'), row=2, col=1)
+fig.add_trace(go.Scatter(x=xs, y=[k[1] for k in counts], mode='lines', name='Apple_Count2', marker_color ='lightgreen'), row=2, col=1)
+fig.add_trace(go.Scatter(x=xs, y=[k[2] for k in counts], mode='lines', name='Apple_Count3', marker_color='lightblue'), row=2, col=1)
 
+
+#now calculate utilization at each "timestop"
+u1 = [100*k[0]/max(k) for k in counts]
+u2 = [100*k[1]/max(k) for k in counts]
+u3 = [100*k[2]/max(k) for k in counts]
+
+fig.add_trace(go.Scatter(x=xs, y=u1, mode='lines', name='Util1', marker_color='red'), row=2, col=1)
+fig.add_trace(go.Scatter(x=xs, y=u2, mode='lines', name='Util2', marker_color='green'), row=2, col=1)
+fig.add_trace(go.Scatter(x=xs, y=u3, mode='lines', name='Util3', marker_color='blue'), row=2, col=1)
 
 
 
@@ -139,6 +151,9 @@ fig.update_layout(xaxis=dict(range=[0, 65]), yaxis=dict(range=[0, 4]))
 fig.show()
 
 
+
+#average utilization
+avg_util = np.average(u1)
 
 
 
