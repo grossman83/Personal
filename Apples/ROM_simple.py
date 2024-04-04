@@ -20,8 +20,8 @@ def get_apples():
 	miny = 0
 	maxy = 3.5
 
-	# apple_ys = np.random.rand(num_apples) * maxy
-	apple_ys = np.random.normal(1.5, 1, num_apples)
+	apple_ys = np.random.rand(num_apples) * maxy
+	# apple_ys = np.random.normal(1.5, 1, num_apples)
 	apple_xs = np.random.rand(num_apples) * maxx
 
 	apple_pts  = sg.points(np.column_stack((apple_xs,apple_ys)))
@@ -52,7 +52,7 @@ def calc_window_time(windows, apples):
 
 
 
-window_width = 1.5
+window_width = 4.0
 window_height = 1.0
 r1_corner = [0, 0]
 r2_corner = [0, 1.0]
@@ -126,6 +126,9 @@ for w in zip(windows, colors, fill_colors):
 # for poly_trace in polygons:
 	# fig.add_trace(poly_trace, row=1, col=1)
 
+
+
+
 xs = np.arange(0,60, 0.1)
 
 fig.add_trace(go.Scatter(x=xs, y=[k[0] for k in counts], mode='lines', name='Apple_Count1', marker_color='lightcoral'), row=2, col=1)
@@ -137,6 +140,9 @@ fig.add_trace(go.Scatter(x=xs, y=[k[2] for k in counts], mode='lines', name='App
 u1 = [100*k[0]/max(k) for k in counts]
 u2 = [100*k[1]/max(k) for k in counts]
 u3 = [100*k[2]/max(k) for k in counts]
+#average utilization
+avg_util = np.average([u1, u2, u3])
+print(avg_util)
 
 fig.add_trace(go.Scatter(x=xs, y=u1, mode='lines', name='Util1', marker_color='red'), row=2, col=1)
 fig.add_trace(go.Scatter(x=xs, y=u2, mode='lines', name='Util2', marker_color='green'), row=2, col=1)
@@ -147,13 +153,12 @@ fig.add_trace(go.Scatter(x=xs, y=u3, mode='lines', name='Util3', marker_color='b
 # fig = go.Figure(data=polygons)
 
 fig.update_layout(xaxis=dict(range=[0, 65]), yaxis=dict(range=[0, 4]))
+fig.update_layout(title=f'Window Width: {window_width}  Window Height: {window_height} Average Utilization: {avg_util:.1f}%')
 
 fig.show()
 
 
 
-#average utilization
-avg_util = np.average(u1)
 
 
 
@@ -165,4 +170,5 @@ avg_util = np.average(u1)
 
 
 
-pdb.set_trace()
+
+# pdb.set_trace()
