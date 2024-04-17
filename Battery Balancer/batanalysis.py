@@ -12,13 +12,16 @@ import scipy.interpolate as interp
 
 if __name__ =='__main__':
 	
-	infile_path = sys.argv[1]
+	infile_path0 = sys.argv[1]
+	infile_path1 = sys.argv[2]
+	infile_path2 = sys.argv[3]
+	infile_path3 = sys.argv[4]
 
 	root_path = os.path.expanduser('~')
-	infile_path = os.path.join(root_path, infile_path)
+	infile_path0 = os.path.join(root_path, infile_path0)
 
 
-	with open(infile_path, newline='') as csvfile:
+	with open(infile_path0, newline='') as csvfile:
 		spamreader = csv.reader(csvfile, delimiter=',')
 		timestamp = []
 		decimals = []
