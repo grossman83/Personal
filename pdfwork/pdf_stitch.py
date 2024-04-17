@@ -62,7 +62,7 @@ if __name__ =='__main__':
 	else:
 		print("error. We only do tabloid and landscape")
 
-	pdb.set_trace()
+	# pdb.set_trace()
 
 	pdfFileObj = open(infile_path, 'rb') 
 
