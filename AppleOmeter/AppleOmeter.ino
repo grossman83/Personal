@@ -10,6 +10,7 @@
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
 #define OLED_RESET    -1
+#define D0 0
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 
@@ -58,7 +59,7 @@ void setup() {
     //########################Serial is for debugging only#############
 
     // myIMU.settings.accelFifoDecimation = 0x06;//decimation by a factor of 4
-    myIMU.settings.accelSampleRate = 833;
+    myIMU.settings.accelSampleRate = 416;
     myIMU.settings.accelBandWidth = 400;
     myIMU.settings.accelRange = 16;
     myIMU.settings.gyroEnabled = 0;
@@ -83,7 +84,7 @@ void setup() {
     display.clearDisplay();
 
     // Set text size, color, and position
-    display.setTextSize(4);
+    display.setTextSize(12);
     display.setTextColor(SSD1306_WHITE);
     display.setCursor(0, 0);
     //########################DISPLAY##############################
@@ -95,11 +96,15 @@ void setup() {
     pinMode(LED_BUILTIN, OUTPUT);
 
     // set the resolution of the analog read to 12 bits. 
-    analogReadResolution(12);
+    // analogReadResolution(12);
+
+
+    pinMode(D0, OUTPUT); // Set D0 as an output
 }
 
 uint8_t sample_fast(){
   analogWrite(LEDB, 0);//turn on blue LED
+  digitalWrite(D0, HIGH);
   for(int i=0; i<fast_buf_length; i++){
     x_val = myIMU.readFloatAccelX();
     y_val = myIMU.readFloatAccelY();
@@ -108,6 +113,7 @@ uint8_t sample_fast(){
     gs_int = (int)(10*sqrt(x_val*x_val + y_val*y_val + z_val*z_val));
     fast_buffer.push(gs_int);
   }
+  digitalWrite(D0, LOW);
   analogWrite(LEDB, 255);//turn off blue LED
 
   uint8_t max_gs = 0;
