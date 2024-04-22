@@ -4,8 +4,9 @@
 
 //low power sleep stuff
 #include "Adafruit_SPIFlash.h"
-#define DO_WORK_PIN   D1
-#define SHUTDOWN_PIN  D2
+// #define DO_WORK_PIN   D1
+// #define SHUTDOWN_PIN  D2
+#define SCREEN_PIN D1
 
 
 //Display Stuff
@@ -46,16 +47,16 @@ double x_val = 0.0;
 double y_val = 0.0;
 double z_val = 0.0;
 double gs = 0.0;
+uint8_t max_gs = 0;
 int gs_int = 0;
 
 
-#define slow_buf_length 10
+// #define slow_buf_length 10
 #define fast_buf_length 500
 CircularBuffer<uint8_t, fast_buf_length> fast_buffer;
-CircularBuffer<uint8_t, slow_buf_length> slow_buffer;
+// CircularBuffer<uint8_t, slow_buf_length> slow_buffer;
 
 void setup() {
-    // put your setup code here, to run once:
     //########################Serial is for debugging only#############
     /*
     Serial.begin(115200);
@@ -78,11 +79,10 @@ void setup() {
     myIMU.settings.accelBandWidth = 400;
     myIMU.settings.accelRange = 16;
     myIMU.settings.gyroEnabled = 0;
-
     myIMU.begin();
     
 
-    display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
+    
 
     
 
@@ -94,42 +94,44 @@ void setup() {
       for(;;);
     }
     */
+    //turn on the display
+    pinMode(SCREEN_PIN, OUTPUT);
+    digitalWrite(SCREEN_PIN, HIGH);
+    delay(10);
 
-    // Clear the buffer
+    // initialize the display
+    display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
     display.clearDisplay();
 
     // Set text size, color, and position
-    display.setTextSize(12);
+    display.setTextSize(4); //4 seems to be the largest
     display.setTextColor(SSD1306_WHITE);
     display.setCursor(0, 0);
     //########################DISPLAY##############################
 
 
-    pinMode(LED_BUILTIN, OUTPUT);
-
-    // set the resolution of the analog read to 12 bits. 
-    // analogReadResolution(12);
+    // pinMode(LED_BUILTIN, OUTPUT);
 
 
-    // this was so I could measure timing with the oscilloscope
+    //D0 was used to measure timing with oscilloscope.
     pinMode(D0, OUTPUT); // Set D0 as an output
 
     //basic LED stuff
     pinMode(LED_RED, OUTPUT);
     pinMode(LED_GREEN, OUTPUT);
     pinMode(LED_BLUE, OUTPUT);
-    
     digitalWrite(LED_RED, HIGH);
     digitalWrite(LED_GREEN, HIGH);
     digitalWrite(LED_BLUE, work_LED_status);
+    
 
     QSPIF_sleep();
 
-    pinMode(DO_WORK_PIN, INPUT_PULLUP_SENSE);
-    attachInterrupt(digitalPinToInterrupt(DO_WORK_PIN), doWorkISR, FALLING);
-
-    pinMode(SHUTDOWN_PIN, INPUT_PULLUP_SENSE);
-    attachInterrupt(digitalPinToInterrupt(SHUTDOWN_PIN), shutdownISR, FALLING);
+    // I'm not using any waking or sleeping based on a pin.
+    // pinMode(DO_WORK_PIN, INPUT_PULLUP_SENSE);
+    // attachInterrupt(digitalPinToInterrupt(DO_WORK_PIN), doWorkISR, FALLING);
+    // pinMode(SHUTDOWN_PIN, INPUT_PULLUP_SENSE);
+    // attachInterrupt(digitalPinToInterrupt(SHUTDOWN_PIN), shutdownISR, FALLING);
 
     xSemaphore = xSemaphoreCreateBinary();
 
@@ -163,23 +165,23 @@ uint8_t sample_fast(){
     fast_buffer.push(gs_int);
   }
   digitalWrite(D0, LOW);
-  digitalWrite(LED_BLUE, LOW);//turn off blue LED
+  digitalWrite(LED_BLUE, HIGH);//turn off blue LED
 
-  uint8_t max_gs = 0;
+  uint8_t fast_max_gs = 0;
   for(int i=0; i<fast_buf_length; i++){
-    if(fast_buffer[i] > max_gs){
-      max_gs = fast_buffer[i];
+    if(fast_buffer[i] > fast_max_gs){
+      fast_max_gs = fast_buffer[i];
     }
   }
 
   
-  return max_gs;
+  return fast_max_gs;
 }
 
 
 void loop() {    
     // code to put the system into deep sleep if it's been on for over 10 min
-    if(millis() - boot_millis > 20000){
+    if(millis() - boot_millis > 60000){
       gotoSystemOffSleep = true;
     }
 
@@ -191,24 +193,25 @@ void loop() {
       digitalWrite(LED_RED, LOW);
       delay(1000);
       digitalWrite(LED_RED, HIGH);
+      digitalWrite(SCREEN_PIN, LOW);//turn off the screen
 
       NRF_POWER->SYSTEMOFF=1; // Execution should not go beyond this
       //sd_power_system_off() // Use this instead if using the soft device
     }
-    // Not going to system off sleep mode, so do work
-    work_LED_status = !work_LED_status;
-    digitalWrite(LED_BLUE, work_LED_status);
     
     
-    gs_int = sample_fast();
-    slow_buffer.push(gs_int);
-
-    uint8_t max_gs = 0;
-    for(int i=0; i<slow_buf_length; i++){
-      if(slow_buffer[i] > max_gs){
-        max_gs = slow_buffer[i];
-      }
+    gs_int = sample_fast(); //get the highest value from sample_fast
+    if(gs_int > max_gs){
+      max_gs = gs_int;
     }
+
+
+    // slow_buffer.push(gs_int);
+    // for(int i=0; i<slow_buf_length; i++){
+    //   if(slow_buffer[i] > max_gs){
+    //     max_gs = slow_buffer[i];
+    //   }
+    // }
 
     gs = (float)max_gs/10;
     char buffer[4];
@@ -227,8 +230,4 @@ void loop() {
     //########################Serial is for debugging only#############
     // Serial.println(gs);
     //########################Serial is for debugging only#############
-
-    // digitalWrite(LED_GREEN, HIGH);// turn off green LED
-    // delay(100);
-    // digitalWrite(LED_GREEN, LOW);
 }
