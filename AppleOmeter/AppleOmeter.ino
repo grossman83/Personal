@@ -7,6 +7,7 @@
 // #define DO_WORK_PIN   D1
 // #define SHUTDOWN_PIN  D2
 #define SCREEN_PIN D1
+#define wait2sleep_millis 300000
 
 
 //Display Stuff
@@ -181,7 +182,7 @@ uint8_t sample_fast(){
 
 void loop() {    
     // code to put the system into deep sleep if it's been on for over 10 min
-    if(millis() - boot_millis > 60000){
+    if(millis() - boot_millis > wait2sleep_millis){
       gotoSystemOffSleep = true;
     }
 
