@@ -17,6 +17,8 @@
 #define SCREEN_HEIGHT 64
 #define OLED_RESET    -1
 #define D0 0
+#define cursor_x 20
+#define cursor_y 20
 
 
 
@@ -107,7 +109,7 @@ void setup() {
     // Set text size, color, and position
     display.setTextSize(4); //4 seems to be the largest
     display.setTextColor(SSD1306_WHITE);
-    display.setCursor(0, 0);
+    display.setCursor(cursor_x, cursor_y);
     //########################DISPLAY##############################
 
 
@@ -222,7 +224,7 @@ void loop() {
     display.clearDisplay();
     display.setTextSize(4);
     display.setTextColor(SSD1306_WHITE);
-    display.setCursor(0, 0);
+    display.setCursor(cursor_x, cursor_y);
     display.println(buffer);
     display.display();
     
