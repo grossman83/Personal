@@ -6,7 +6,7 @@
 #include "Adafruit_SPIFlash.h"
 #define DO_WORK_PIN   D2
 #define SHUTDOWN_PIN  D3
-#define wait2sleep_millis 30000
+#define wait2sleep_millis 300000
 
 
 //Display Stuff
@@ -29,7 +29,7 @@ LSM6DS3 myIMU(I2C_MODE, LSM6DS3_ADDRESS);    //I2C device address 0x6A
 // More sleep stuff
 Adafruit_FlashTransport_QSPI flashTransport;
 SemaphoreHandle_t xSemaphore;
-bool gotoSystemOffSleep = false;
+// bool gotoSystemOffSleep = false;
 int boot_millis = 0;
 
 void QSPIF_sleep(void)
@@ -115,16 +115,15 @@ void setup() {
     pinMode(LED_BLUE, OUTPUT);
     digitalWrite(LED_RED, HIGH);
     digitalWrite(LED_GREEN, HIGH);
-    // digitalWrite(LED_BLUE, work_LED_status);
     
 
     QSPIF_sleep();
 
     // I'm not using any waking or sleeping based on a pin.
-    pinMode(DO_WORK_PIN, INPUT_PULLUP_SENSE);
-    attachInterrupt(digitalPinToInterrupt(DO_WORK_PIN), doWorkISR, FALLING);
-    pinMode(SHUTDOWN_PIN, INPUT_PULLUP_SENSE);
-    attachInterrupt(digitalPinToInterrupt(SHUTDOWN_PIN), shutdownISR, FALLING);
+    // pinMode(DO_WORK_PIN, INPUT_PULLUP_SENSE);
+    // attachInterrupt(digitalPinToInterrupt(DO_WORK_PIN), doWorkISR, FALLING);
+    // pinMode(SHUTDOWN_PIN, INPUT_PULLUP_SENSE);
+    // attachInterrupt(digitalPinToInterrupt(SHUTDOWN_PIN), shutdownISR, FALLING);
 
     xSemaphore = xSemaphoreCreateBinary();
 
@@ -135,14 +134,14 @@ void setup() {
     boot_millis = millis();
 }
 
-void doWorkISR()
-{
-  xSemaphoreGive(xSemaphore);
-}
+// void doWorkISR()
+// {
+//   xSemaphoreGive(xSemaphore);
+// }
 
 void shutdownISR()
 {
-  gotoSystemOffSleep = true;
+  // gotoSystemOffSleep = true;
   xSemaphoreGive(xSemaphore);
 }
 
@@ -173,16 +172,11 @@ uint8_t sample_fast(){
 
 
 void loop() {
-  // FreeRTOS will automatically put the system in system_on sleep mode here
-  // xSemaphoreTake(xSemaphore, portMAX_DELAY);
+  // if(millis() - boot_millis > wait2sleep_millis){
+  //   gotoSystemOffSleep = true;
+  // }
 
-  if(millis() - boot_millis > wait2sleep_millis){
-    gotoSystemOffSleep = true;
-  }
-
-
-
-  if (gotoSystemOffSleep){
+  if (millis() - boot_millis > wait2sleep_millis){
     //Turn off the blue LED
     digitalWrite(LED_BLUE, HIGH);
     //Flash red to see we are going to system_off sleep mode
@@ -192,7 +186,6 @@ void loop() {
 
 
     // turn off the IMU
-    // myIMU.settings.accelODROff=0;
     myIMU.settings.accelEnabled = 0;
     myIMU.begin();
     
@@ -205,7 +198,6 @@ void loop() {
     digitalWrite(SCREEN_PIN, LOW);//turn off the screen
 
     NRF_POWER->SYSTEMOFF=1; // Execution should not go beyond this
-    // sd_power_system_off(); // Use this instead if using the soft device
   }
   
   
