@@ -1,15 +1,15 @@
 #include "Adafruit_SPIFlash.h"
 
-#define DO_WORK_PIN   D3
-#define SHUTDOWN_PIN  D4
+#define DO_WORK_PIN   D2
+#define SHUTDOWN_PIN  D3
 
-
+// working code came from here
+//https://forum.seeedstudio.com/t/getting-lower-power-consumption-on-seeed-xiao-nrf52840/270129/3
 
 Adafruit_FlashTransport_QSPI flashTransport;
 SemaphoreHandle_t xSemaphore;
 bool gotoSystemOffSleep = false;
 int work_LED_status = HIGH;
-int boot_millis = 0;
 
 void QSPIF_sleep(void)
 {
@@ -42,7 +42,6 @@ void setup()
   digitalWrite(LED_GREEN, LOW);
   delay(1000);
   digitalWrite(LED_GREEN, HIGH);
-  boot_millis = millis()
 }
 
 void doWorkISR()
@@ -59,16 +58,10 @@ void shutdownISR()
 void loop()
 {
   // FreeRTOS will automatically put the system in system_on sleep mode here
-  // xSemaphoreTake(xSemaphore, portMAX_DELAY);
-
-  if(millis() - boot_time > 10000){
-    gotoSystemOffSleep = true;
-  }
+  xSemaphoreTake(xSemaphore, portMAX_DELAY);
 
   if (gotoSystemOffSleep)
   {
-    //Turn off the blue LED
-    digitalWrite(LED_BLUE, HIGH);
     //Flash red to see we are going to system_off sleep mode
     digitalWrite(LED_RED, LOW);
     delay(1000);
