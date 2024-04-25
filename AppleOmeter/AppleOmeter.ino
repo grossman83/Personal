@@ -4,6 +4,8 @@
 
 //low power sleep stuff
 #include "Adafruit_SPIFlash.h"
+#define DO_WORK_PIN   D2
+#define SHUTDOWN_PIN  D3
 #define wait2sleep_millis 30000
 
 
@@ -27,6 +29,7 @@ LSM6DS3 myIMU(I2C_MODE, LSM6DS3_ADDRESS);    //I2C device address 0x6A
 // More sleep stuff
 Adafruit_FlashTransport_QSPI flashTransport;
 SemaphoreHandle_t xSemaphore;
+bool gotoSystemOffSleep = false;
 int boot_millis = 0;
 
 void QSPIF_sleep(void)
@@ -71,6 +74,7 @@ void setup() {
     myIMU.settings.accelBandWidth = 400;
     myIMU.settings.accelRange = 16;
     myIMU.settings.gyroEnabled = 0;
+    myIMU.settings.tempEnabled = 0;
     myIMU.begin();
     
 
@@ -117,10 +121,10 @@ void setup() {
     QSPIF_sleep();
 
     // I'm not using any waking or sleeping based on a pin.
-    // pinMode(DO_WORK_PIN, INPUT_PULLUP_SENSE);
-    // attachInterrupt(digitalPinToInterrupt(DO_WORK_PIN), doWorkISR, FALLING);
-    // pinMode(SHUTDOWN_PIN, INPUT_PULLUP_SENSE);
-    // attachInterrupt(digitalPinToInterrupt(SHUTDOWN_PIN), shutdownISR, FALLING);
+    pinMode(DO_WORK_PIN, INPUT_PULLUP_SENSE);
+    attachInterrupt(digitalPinToInterrupt(DO_WORK_PIN), doWorkISR, FALLING);
+    pinMode(SHUTDOWN_PIN, INPUT_PULLUP_SENSE);
+    attachInterrupt(digitalPinToInterrupt(SHUTDOWN_PIN), shutdownISR, FALLING);
 
     xSemaphore = xSemaphoreCreateBinary();
 
@@ -138,6 +142,7 @@ void doWorkISR()
 
 void shutdownISR()
 {
+  gotoSystemOffSleep = true;
   xSemaphoreGive(xSemaphore);
 }
 
@@ -168,41 +173,62 @@ uint8_t sample_fast(){
 
 
 void loop() {
-    if (millis() - boot_millis > wait2sleep_millis)
-    {
-      //Turn off the blue LED
-      digitalWrite(LED_BLUE, HIGH);
-      //Flash red to see we are going to system_off sleep mode
-      digitalWrite(LED_RED, LOW);
-      delay(1000);
-      digitalWrite(LED_RED, HIGH);
-      digitalWrite(SCREEN_PIN, LOW);//turn off the screen
+  // FreeRTOS will automatically put the system in system_on sleep mode here
+  // xSemaphoreTake(xSemaphore, portMAX_DELAY);
 
-      NRF_POWER->SYSTEMOFF=1; // Execution should not go beyond this
-      sd_power_system_off(); // Use this instead if using the soft device
-    }
-    
-    
-    gs_int = sample_fast(); //get the highest value from sample_fast
-    if(gs_int > max_gs){
-      max_gs = gs_int;
-    }
+  if(millis() - boot_millis > wait2sleep_millis){
+    gotoSystemOffSleep = true;
+  }
 
-    gs = (float)max_gs/10;
-    char buffer[4];
-    sprintf(buffer, "%.1f", gs);
 
-    //write the data to the display
-    display.clearDisplay();
-    display.setTextSize(4);
-    display.setTextColor(SSD1306_WHITE);
-    display.setCursor(cursor_x, cursor_y);
-    display.println(buffer);
-    display.display();
-    
+
+  if (gotoSystemOffSleep){
+    //Turn off the blue LED
+    digitalWrite(LED_BLUE, HIGH);
+    //Flash red to see we are going to system_off sleep mode
+    digitalWrite(LED_RED, LOW);
+    delay(1000);
+    digitalWrite(LED_RED, HIGH);
+
+
+    // turn off the IMU
+    // myIMU.settings.accelODROff=0;
+    myIMU.settings.accelEnabled = 0;
+    myIMU.begin();
     
 
-    //########################Serial is for debugging only#############
-    // Serial.println(gs);
-    //########################Serial is for debugging only#############
+
+    // tried commenting this out, but it does matter. If I don't turn off
+    // the screen I use nearly 6 mA in sleep. I'm surprised that the pin
+    // doesn't naturally go off in sleep mode.
+    // the red LED goes off during sleep mode despite me not telling it to go high.
+    digitalWrite(SCREEN_PIN, LOW);//turn off the screen
+
+    NRF_POWER->SYSTEMOFF=1; // Execution should not go beyond this
+    // sd_power_system_off(); // Use this instead if using the soft device
+  }
+  
+  
+  gs_int = sample_fast(); //get the highest value from sample_fast
+  if(gs_int > max_gs){
+    max_gs = gs_int;
+  }
+
+  gs = (float)max_gs/10;
+  char buffer[4];
+  sprintf(buffer, "%.1f", gs);
+
+  //write the data to the display
+  display.clearDisplay();
+  display.setTextSize(4);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(cursor_x, cursor_y);
+  display.println(buffer);
+  display.display();
+  
+  
+
+  //########################Serial is for debugging only#############
+  // Serial.println(gs);
+  //########################Serial is for debugging only#############
 }
