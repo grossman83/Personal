@@ -4,15 +4,13 @@
 
 //low power sleep stuff
 #include "Adafruit_SPIFlash.h"
-// #define DO_WORK_PIN   D1
-// #define SHUTDOWN_PIN  D2
-#define SCREEN_PIN D1
-#define wait2sleep_millis 300000
+#define wait2sleep_millis 30000
 
 
 //Display Stuff
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#define SCREEN_PIN D1
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
 #define OLED_RESET    -1
@@ -29,8 +27,6 @@ LSM6DS3 myIMU(I2C_MODE, LSM6DS3_ADDRESS);    //I2C device address 0x6A
 // More sleep stuff
 Adafruit_FlashTransport_QSPI flashTransport;
 SemaphoreHandle_t xSemaphore;
-bool gotoSystemOffSleep = false;
-int work_LED_status = HIGH;
 int boot_millis = 0;
 
 void QSPIF_sleep(void)
@@ -41,11 +37,6 @@ void QSPIF_sleep(void)
 }
 
 
-
-// const int analogInPin = A0;  // Analog input pin that the potentiometer is attached to
-int sensorValue = 0;  // value read from the pot
-
-
 double x_val = 0.0;
 double y_val = 0.0;
 double z_val = 0.0;
@@ -54,10 +45,8 @@ uint8_t max_gs = 0;
 int gs_int = 0;
 
 
-// #define slow_buf_length 10
 #define fast_buf_length 500
 CircularBuffer<uint8_t, fast_buf_length> fast_buffer;
-// CircularBuffer<uint8_t, slow_buf_length> slow_buffer;
 
 void setup() {
     //########################Serial is for debugging only#############
@@ -113,11 +102,8 @@ void setup() {
     //########################DISPLAY##############################
 
 
-    // pinMode(LED_BUILTIN, OUTPUT);
-
-
     //D0 was used to measure timing with oscilloscope.
-    pinMode(D0, OUTPUT); // Set D0 as an output
+    //pinMode(D0, OUTPUT); // Set D0 as an output
 
     //basic LED stuff
     pinMode(LED_RED, OUTPUT);
@@ -125,7 +111,7 @@ void setup() {
     pinMode(LED_BLUE, OUTPUT);
     digitalWrite(LED_RED, HIGH);
     digitalWrite(LED_GREEN, HIGH);
-    digitalWrite(LED_BLUE, work_LED_status);
+    // digitalWrite(LED_BLUE, work_LED_status);
     
 
     QSPIF_sleep();
@@ -152,13 +138,12 @@ void doWorkISR()
 
 void shutdownISR()
 {
-  gotoSystemOffSleep = true;
   xSemaphoreGive(xSemaphore);
 }
 
 uint8_t sample_fast(){
   digitalWrite(LED_BLUE, LOW);//turn on blue LED
-  digitalWrite(D0, HIGH);
+  //digitalWrite(D0, HIGH);//for timing measurement with oscope
   for(int i=0; i<fast_buf_length; i++){
     x_val = myIMU.readFloatAccelX();
     y_val = myIMU.readFloatAccelY();
@@ -167,7 +152,7 @@ uint8_t sample_fast(){
     gs_int = (int)(10*sqrt(x_val*x_val + y_val*y_val + z_val*z_val));
     fast_buffer.push(gs_int);
   }
-  digitalWrite(D0, LOW);
+  //digitalWrite(D0, LOW);//for timing measurement with oscope
   digitalWrite(LED_BLUE, HIGH);//turn off blue LED
 
   uint8_t fast_max_gs = 0;
@@ -182,13 +167,8 @@ uint8_t sample_fast(){
 }
 
 
-void loop() {    
-    // code to put the system into deep sleep if it's been on for over 10 min
-    if(millis() - boot_millis > wait2sleep_millis){
-      gotoSystemOffSleep = true;
-    }
-
-    if (gotoSystemOffSleep)
+void loop() {
+    if (millis() - boot_millis > wait2sleep_millis)
     {
       //Turn off the blue LED
       digitalWrite(LED_BLUE, HIGH);
@@ -199,7 +179,7 @@ void loop() {
       digitalWrite(SCREEN_PIN, LOW);//turn off the screen
 
       NRF_POWER->SYSTEMOFF=1; // Execution should not go beyond this
-      //sd_power_system_off() // Use this instead if using the soft device
+      sd_power_system_off(); // Use this instead if using the soft device
     }
     
     
@@ -207,14 +187,6 @@ void loop() {
     if(gs_int > max_gs){
       max_gs = gs_int;
     }
-
-
-    // slow_buffer.push(gs_int);
-    // for(int i=0; i<slow_buf_length; i++){
-    //   if(slow_buffer[i] > max_gs){
-    //     max_gs = slow_buffer[i];
-    //   }
-    // }
 
     gs = (float)max_gs/10;
     char buffer[4];
