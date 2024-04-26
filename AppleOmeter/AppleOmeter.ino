@@ -71,11 +71,12 @@ void setup() {
 
     // myIMU.settings.accelFifoDecimation = 0x06;//decimation by a factor of 4
     myIMU.settings.accelSampleRate = 416;
+    // myIMU.settings.accelSampleRate = 3300;
     myIMU.settings.accelBandWidth = 400;
     myIMU.settings.accelRange = 16;
     myIMU.settings.gyroEnabled = 0;
     myIMU.settings.tempEnabled = 0;
-    myIMU.begin();
+    myIMU.begin(); //must call this to apply the settings.
     
 
     
