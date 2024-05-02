@@ -8,6 +8,9 @@
 #define SHUTDOWN_PIN  D3
 #define wait2sleep_millis 300000
 
+
+bool serial_enabled = false;
+
 //test
 //Display Stuff
 #include <Adafruit_GFX.h>
@@ -50,29 +53,25 @@ int gs_int = 0;
 
 #define fast_buf_length 500
 CircularBuffer<uint8_t, fast_buf_length> fast_buffer;
+CircularBuffer<int, fast_buf_length> millis_buffer;
 
 void setup() {
-    //########################Serial is for debugging only#############
-    /*
-    Serial.begin(115200);
-    while (!Serial);
-    //Call .begin() to configure the IMUs
-    if (myIMU.begin() != 0) {
-        Serial.println("Device error");
-    } else {
-        Serial.println("Device OK!");
+    if(serial_enabled){
+      Serial.begin(115200);
+      while (!Serial);
+      //Call .begin() to configure the IMUs
+      if (myIMU.begin() != 0) {
+          Serial.println("Device error");
+      } else {
+          Serial.println("Device OK!");
+      }
     }
-    */
-    //########################Serial is for debugging only#############
-
-
-
 
 
     // myIMU.settings.accelFifoDecimation = 0x06;//decimation by a factor of 4
     myIMU.settings.accelSampleRate = 416;
     // myIMU.settings.accelSampleRate = 3300;
-    myIMU.settings.accelBandWidth = 400;
+    myIMU.settings.accelBandWidth = 400;//50, 100, 200, 400
     myIMU.settings.accelRange = 16;
     myIMU.settings.gyroEnabled = 0;
     myIMU.settings.tempEnabled = 0;
@@ -84,13 +83,12 @@ void setup() {
     
 
     //########################DISPLAY##############################
-    // Initialize display
-    /*
-    if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
-      Serial.println(F("SSD1306 allocation failed"));
-      for(;;);
+    if(serial_enabled){
+      if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+        Serial.println(F("SSD1306 allocation failed"));
+        for(;;);
+      }
     }
-    */
     //turn on the display
     pinMode(SCREEN_PIN, OUTPUT);
     digitalWrite(SCREEN_PIN, HIGH);
@@ -156,6 +154,10 @@ uint8_t sample_fast(){
 
     gs_int = (int)(10*sqrt(x_val*x_val + y_val*y_val + z_val*z_val));
     fast_buffer.push(gs_int);
+
+    if(serial_enabled){
+      millis_buffer.push(millis());
+    }
   }
   //digitalWrite(D0, LOW);//for timing measurement with oscope
   digitalWrite(LED_BLUE, HIGH);//turn off blue LED
@@ -164,6 +166,14 @@ uint8_t sample_fast(){
   for(int i=0; i<fast_buf_length; i++){
     if(fast_buffer[i] > fast_max_gs){
       fast_max_gs = fast_buffer[i];
+    }
+  }
+
+  if(serial_enabled){
+    for(int i=0; i<fast_buf_length; i++){
+      Serial.print(millis_buffer[i]);
+      Serial.print(", ");
+      Serial.println(fast_buffer[i]/9.81);
     }
   }
 
@@ -221,7 +231,7 @@ void loop() {
   
   
 
-  //########################Serial is for debugging only#############
-  // Serial.println(gs);
-  //########################Serial is for debugging only#############
+  if(serial_enabled){
+    Serial.println(gs);
+  }
 }
