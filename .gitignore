@@ -3,6 +3,11 @@ Thumbs.db
 ehthumbs.db
 
 
+#specific directory
+~/git/Personal/Arduino/libraries/
+
+
+
 #Xcode Stuff
 .DS_Store
 
