@@ -10,9 +10,10 @@ G = 9.81#m/s2
 
 timestep = 0.00001#one tenth of a millisecond
 timesteps = np.arange(0, 0.1, timestep)
+damping_factor = 0.0000002#don't worry about the units!
 
-foam_thickness = 25#mm
-useful_percentage = 0.25
+foam_thickness = 12.5#mm
+useful_percentage = 0.25#not as a percentage
 useful_foam_thickness = foam_thickness*useful_percentage
 foam_pressure = 4#psi
 foam_pressure_Pa = foam_pressure*6894#Pa/psi
@@ -34,6 +35,7 @@ dists = []
 patch_area_mm2 = []
 inc_patch_area_mm2 = []
 cum_dists = []
+damped_energy = []
 
 #calculate the initial energy
 energy.append(apple_mass*G*fall_height)
@@ -58,12 +60,14 @@ for t in timesteps:
 	#new ring of apple that makes contact with the foam.
 	E_absorbed = 0
 	cum_dists.reverse()
-	for dd in zip(cum_dists, inc_patch_area_mm2):
+	for dd in zip(cum_dists, inc_patch_area_mm2, velocity):
 		K = dd[1]*foam_kmm3*dd[0]
 		E_absorbed += 0.5 * K * dd[0]**2/(1000*1000)
 	cum_dists.reverse()
 	if (energy[-1]<=0): break
-	energy.append(energy[-1] - E_absorbed)
+
+	damped_energy.append(damping_factor * velocity[-1] * patch_area_mm2[-1])
+	energy.append(energy[-1] - E_absorbed - damped_energy[-1])
 	# velocity.append(np.sqrt(2*energy[-1]/apple_mass
 
 
