@@ -104,7 +104,7 @@ fig = make_subplots(
 
 dist_trace = go.Scatter(
 	x=timesteps,
-	y=cum_dists,
+	y=[-1*k for k in cum_dists],
 	mode="markers",
 	marker=dict(size=3, color="blue"),
 	name="Dist [mm]",
@@ -115,7 +115,7 @@ fig.add_trace(dist_trace, row=1, col=1)
 
 vel_trace = go.Scatter(
 	x=timesteps,
-	y=velocity,
+	y=[-1*v for v in velocity],
 	mode="markers",
 	marker=dict(size=3, color="red"),
 	name="Velocity [m/s]",
@@ -125,7 +125,7 @@ fig.add_trace(vel_trace, row=1, col=2)
 
 accel_trace = go.Scatter(
 	x=timesteps,
-	y=[k/9.81 for k in accel],
+	y=[-1*k/9.81 for k in accel],
 	mode="markers",
 	marker=dict(size=3, color="red"),
 	name="Accel [Gs]",
@@ -170,7 +170,7 @@ fig.show()
 
 
 
-pdb.set_trace()
+# pdb.set_trace()
 
 
 
