@@ -7,15 +7,15 @@
   "secrets": [
     {
       "name": "SECRET_DEVICE_KEY",
-      "value": ""
+      "value": "QrJP#99z0DhocOotYKJrimHKd"
     },
     {
       "name": "SECRET_OPTIONAL_PASS",
-      "value": ""
+      "value": "lukethedog"
     },
     {
       "name": "SECRET_SSID",
-      "value": ""
+      "value": "BigLukeNetwork"
     }
   ],
   "included_libs": []
