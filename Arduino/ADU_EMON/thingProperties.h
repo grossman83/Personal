@@ -5,9 +5,9 @@
 
 const char DEVICE_LOGIN_NAME[]  = "d6dc36d6-baae-40ea-b99d-990da0c69020";
 
-const char SSID[]               = SECRET_SSID;    // Network SSID (name)
-const char PASS[]               = SECRET_OPTIONAL_PASS;    // Network password (use for WPA, or use as key for WEP)
-const char DEVICE_KEY[]  = SECRET_DEVICE_KEY;    // Secret device password
+const char SSID[]               = "BigLukeNetwork";    // Network SSID (name)
+const char PASS[]               = "lukethedog";    // Network password (use for WPA, or use as key for WEP)
+const char DEVICE_KEY[]  = "QrJP#99z0DhocOotYKJrimHKd";    // Secret device password
 
 
 float pow0;
