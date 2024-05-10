@@ -58,7 +58,7 @@ CircularBuffer<int, fast_buf_length> millis_buffer;
 void setup() {
     if(serial_enabled){
       Serial.begin(115200);
-      while (!Serial);
+      // while (!Serial);
       //Call .begin() to configure the IMUs
       if (myIMU.begin() != 0) {
           Serial.println("Device error");
@@ -231,7 +231,7 @@ void loop() {
   
   
 
-  if(serial_enabled){
-    Serial.println(gs);
-  }
+  // if(serial_enabled){
+  //   Serial.println(gs);
+  // }
 }
