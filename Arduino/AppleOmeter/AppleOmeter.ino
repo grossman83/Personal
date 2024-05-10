@@ -2,6 +2,26 @@
 #include "Wire.h"
 #include "CircularBuffer.hpp"
 
+//BLE stuff
+#include <bluefruit.h>
+#include <Adafruit_LittleFS.h>
+#include <InternalFileSystem.h>
+#include <avr/dtostrf.h>
+
+
+
+// BLE Service
+BLEDfu  bledfu;  // OTA DFU service
+BLEDis  bledis;  // device information
+BLEUart bleuart; // uart over ble
+BLEBas  blebas;  // battery
+
+char text_str[4];
+
+
+
+
+
 //low power sleep stuff
 #include "Adafruit_SPIFlash.h"
 #define DO_WORK_PIN   D2
@@ -9,7 +29,7 @@
 #define wait2sleep_millis 300000
 
 
-bool serial_enabled = false;
+bool serial_enabled = true;
 
 //test
 //Display Stuff
@@ -104,6 +124,34 @@ void setup() {
     display.setCursor(cursor_x, cursor_y);
     //########################DISPLAY##############################
 
+    //##########################BLE#################################
+  // To be consistent OTA DFU should be added first if it exists
+    bledfu.begin();
+
+    // Configure and Start Device Information Service
+    bledis.setManufacturer("Adafruit Industries");
+    bledis.setModel("Bluefruit Feather52");
+    bledis.begin();
+
+    // Configure and Start BLE Uart Service
+    bleuart.begin();
+
+    // Start BLE Battery Service
+    // blebas.begin();
+    // blebas.write(100);
+
+    // Set up and start advertising
+    startAdv();
+    //##########################BLE#################################
+
+
+
+
+
+
+
+
+
 
     //D0 was used to measure timing with oscilloscope.
     //pinMode(D0, OUTPUT); // Set D0 as an output
@@ -132,6 +180,36 @@ void setup() {
     digitalWrite(LED_GREEN, HIGH);
     boot_millis = millis();
 }
+
+
+void startAdv(void)
+{
+  // Advertising packet
+  Bluefruit.Advertising.addFlags(BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE);
+  Bluefruit.Advertising.addTxPower();
+
+  // Include bleuart 128-bit uuid
+  Bluefruit.Advertising.addService(bleuart);
+
+  // Secondary Scan Response packet (optional)
+  // Since there is no room for 'Name' in Advertising packet
+  Bluefruit.ScanResponse.addName();
+  
+  /* Start Advertising
+   * - Enable auto advertising if disconnected
+   * - Interval:  fast mode = 20 ms, slow mode = 152.5 ms
+   * - Timeout for fast mode is 30 seconds
+   * - Start(timeout) with timeout = 0 will advertise forever (until connected)
+   * 
+   * For recommended advertising interval
+   * https://developer.apple.com/library/content/qa/qa1931/_index.html   
+   */
+  Bluefruit.Advertising.restartOnDisconnect(true);
+  Bluefruit.Advertising.setInterval(32, 244);    // in unit of 0.625 ms
+  Bluefruit.Advertising.setFastTimeout(30);      // number of seconds in fast mode
+  Bluefruit.Advertising.start(0);                // 0 = Don't stop advertising after n seconds  
+}
+
 
 // void doWorkISR()
 // {
@@ -228,10 +306,59 @@ void loop() {
   display.setCursor(cursor_x, cursor_y);
   display.println(buffer);
   display.display();
+
+
+  //send the full buffer over BLE
+  gs_int = 0;
+  for(int i=0; i<fast_buf_length; i++){
+    gs_int = fast_buffer.pop();
+    ultoa(gs_int, text_str, 3);
+    bleuart.write((uint8_t*)text_str, strlen(text_str));  // Send the string over BLE
+    // dtostrf()
+
+    // ultoa(micro_count, micros_str, 10);
+    // dtostrf(g, 5, 2, gvalstr);
+    
+
+
+  }
   
   
 
   // if(serial_enabled){
   //   Serial.println(gs);
   // }
+}
+
+
+
+// callback invoked when central connects
+void connect_callback(uint16_t conn_handle)
+{
+  // Get the reference to current connection
+  BLEConnection* connection = Bluefruit.Connection(conn_handle);
+
+  char central_name[32] = { 0 };
+  connection->getPeerName(central_name, sizeof(central_name));
+
+  if(serial_enabled){
+    Serial.print("Connected to ");
+    Serial.println(central_name);
+  }
+}
+
+/**
+ * Callback invoked when a connection is dropped
+ * @param conn_handle connection where this event happens
+ * @param reason is a BLE_HCI_STATUS_CODE which can be found in ble_hci.h
+ */
+void disconnect_callback(uint16_t conn_handle, uint8_t reason)
+{
+  (void) conn_handle;
+  (void) reason;
+
+  if(serial_enabled){
+    Serial.println();
+    Serial.print("Disconnected, reason = 0x"); Serial.println(reason, HEX);
+  }
 }
