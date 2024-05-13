@@ -13,6 +13,14 @@
 
 
  ** it's working **
+
+ 13MAY2024
+ I was able to get this code working by doing the following.
+ * connect my phone through the bluetooth settings to the device
+ * open a text app that is expecting keyboard input
+ * put the cursor there
+ * type in the serial monitor in the computer and have it appear on the
+ phone's screen where the cursor is.
 *********************************************************************/
 #include <bluefruit.h>
 
