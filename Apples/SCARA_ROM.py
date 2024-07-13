@@ -4,26 +4,30 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import pdb
 
-a1 = 600 * np.ones([150,150])
-a2 = 600 * np.ones([150,150])
+
+a1_length = 800
+a2_length = 600
 
 
-ypos = np.arange(0,1500, 10)
-zpos = np.arange(-1500, 1500, 20)
+
+num_pts = 151
+
+ypos = np.linspace(0,1500, num_pts)
+zpos = np.linspace(-1500, 1500, num_pts)
+
+a1 = a1_length * np.ones([num_pts, num_pts])
+a2 = a2_length * np.ones([num_pts, num_pts])
 
 mesh = np.meshgrid(ypos, zpos)
 
-# a1s = a1np.ones()
-
-# pdb.set_trace()
 
 q2_up = np.arccos((np.square(mesh[0]) + np.square(mesh[1]) - np.square(a1) - np.square(a2))/(2*a1*a2))
-q1_up = np.arctan(mesh[0]/mesh[1]) - np.arctan((a2*np.sin(q2_up))/(a1+a2*np.cos(q2_up)))
+q1_up = np.arctan(mesh[1]/mesh[0]) - np.arctan((a2*np.sin(q2_up))/(a1+a2*np.cos(q2_up)))
 
 
 
-yposForward = a1*np.cos(q1_up) + a1*np.cos(q1_up+q2_up)
-zposForward = a1*np.sin(q1_up) + a1*np.sin(q1_up+q2_up)
+yposForward = a1*np.cos(q1_up) + a2*np.cos(q1_up+q2_up)
+zposForward = a1*np.sin(q1_up) + a2*np.sin(q1_up+q2_up)
 
 
 
@@ -84,7 +88,7 @@ fig.show()
 
 
 
-# pdb.set_trace()
+pdb.set_trace()
 
 
 
