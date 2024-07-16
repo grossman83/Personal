@@ -6,6 +6,16 @@ from plotly.subplots import make_subplots
 import pdb
 
 
+
+def make_axes_equal(fig):
+    for i in range(1, 4):  # For rows 1 to 3
+        for j in range(1, 3):  # For columns 1 to 2
+            fig.update_xaxes(scaleanchor=f"y{i}", scaleratio=1, range=[0,2000], row=i, col=j)
+            fig.update_yaxes(scaleanchor=f"x{i}", scaleratio=1, range=[-1500,1500],row=i, col=j)
+
+
+
+
 a1_length = 600
 a2_length = 600
 
@@ -42,8 +52,8 @@ fig = make_subplots(rows=3, cols=2, subplot_titles=(
 		'Achievable Cartesian Points',
 		'dtheta1/dx',
 		'dtheta2/dx',
-		'dtheta1/dy',
-		'dtheta2/dy',
+		'dtheta1/dz',
+		'dtheta2/dz',
 		)
 )
 
@@ -66,18 +76,9 @@ cart_pts = go.Scatter(
 	name="Cartesian Points Attempted",
 	)
 fig.add_trace(cart_pts, row=1, col=2)
-fig.update_layout(
-	xaxis = dict(
-		scaleanchor='y',
-		scaleratio=1,
-		),
-	yaxis = dict(
-		scaleanchor='x',
-		scaleratio=1,
-		),
-	width = 1800,
-	height = 1800,
-	)
+
+
+fig.update_xaxes(title_text = 'blah', row=1, col=2)
 
 cart_pts_forward = go.Scatter(
 	x = xposForward.flatten(),
@@ -88,23 +89,8 @@ cart_pts_forward = go.Scatter(
 	)
 
 fig.add_trace(cart_pts_forward, row=1, col=2)
-fig.update_layout(
-	xaxis = dict(
-		scaleanchor='y',
-		scaleratio=1,
-		),
-	yaxis = dict(
-		scaleanchor='x',
-		scaleratio=1,
-		)
-	)
 
 
-
-
-
-
-# pdb.set_trace()
 
 # now I need to play with the jacobian matrix to see where the RPM is high
 # and where the accelerations are high.
@@ -126,7 +112,7 @@ new_q2_up = np.arccos((np.square(new_xmesh) + np.square(new_zmesh) - np.square(a
 new_q1_up = np.arctan(new_zmesh/new_xmesh) - np.arctan((a2*np.sin(q2_up))/(a1+a2*np.cos(q2_up)))
 
 
-cart_vel = 3000#mm/s
+# cart_vel = 3000#mm/s
 
 def get_ratio(dthetadcart):
 	ratio = np.nanmax(np.abs(dthetadcart)) / np.nanmin(np.abs(dthetadcart))
@@ -137,8 +123,8 @@ def get_ratio(dthetadcart):
 
 
 
-dtheta1dx = (new_q1_up - q1_up)/delta*cart_vel
-dtheta2dx = (new_q2_up - q2_up)/delta*cart_vel
+dtheta1dx = (new_q1_up - q1_up)/delta#*cart_vel
+dtheta2dx = (new_q2_up - q2_up)/delta#*cart_vel
 
 # condition for bit-masking the stuff that is out of the ROM.
 # only need to check dtheta1 because it is based on dtheta 2 anyhow
@@ -193,21 +179,23 @@ fig.update_layout(
 new_q2_up = np.arccos((np.square(xmesh) + np.square(new_zmesh) - np.square(a1) - np.square(a2))/(2*a1*a2))
 new_q1_up = np.arctan(new_zmesh/xmesh) - np.arctan((a2*np.sin(q2_up))/(a1+a2*np.cos(q2_up)))
 
-dtheta1dy = (new_q1_up - q1_up)/1
-dtheta2dy = (new_q2_up - q2_up)/1
+dtheta1dz = (new_q1_up - q1_up)/1
+dtheta2dz = (new_q2_up - q2_up)/1
 
-condition  = np.isnan(dtheta1dy)
+condition  = np.isnan(dtheta1dz)#only need to check dtheta1 because it's calculated from dtheta2 anyways
+condition2 = np.logical_and(np.abs(dtheta1dz)>0.0005, np.abs(dtheta1dz)<0.01)
+all_conditions = np.logical_and(~condition, condition2)
 
 
 # Create the scatter plots for dtheta/dy
 dtheta1dz_plot = go.Scatter(
-    x=xmesh[~condition].flatten(),
-    y=zmesh[~condition].flatten(),
+    x=xmesh[all_conditions].flatten(),
+    y=zmesh[all_conditions].flatten(),
     name='dthe1dz',
     mode='markers',
     marker=dict(
         size=3,
-        color=np.abs(dtheta1dy[~condition].flatten()),
+        color=np.abs(dtheta1dz[all_conditions].flatten()),
         colorscale='plasma',
         colorbar=dict(title="dtheta1/dz"),
         coloraxis="coloraxis3"  # Link to the first color axis
@@ -215,15 +203,19 @@ dtheta1dz_plot = go.Scatter(
     hovertemplate='%{marker.color:.4f}<extra></extra>',
 )
 
+condition2 = np.logical_and(np.abs(dtheta2dz)>0.001, np.abs(dtheta2dz)<0.01)
+all_conditions = np.logical_and(~condition, condition2)
+
+
 # Create the second scatter plot
 dtheta2dz_plot = go.Scatter(
-    x=xmesh[~condition].flatten(),
-    y=zmesh[~condition].flatten(),
+    x=xmesh[all_conditions].flatten(),
+    y=zmesh[all_conditions].flatten(),
     name='dtheta2dz',
     mode='markers',
     marker=dict(
         size=3,
-        color=np.abs(dtheta2dy[~condition].flatten()),
+        color=np.abs(dtheta2dz[all_conditions].flatten()),
         colorscale='plasma',
         colorbar=dict(title="dtheta2/dz"),
         coloraxis="coloraxis4" # Link to the second color axis
@@ -243,6 +235,11 @@ fig.update_layout(
 
 
 
+fig.update_layout(
+	width = 1800,
+	height = 2700,
+	)
+make_axes_equal(fig)
 
 
 
@@ -251,6 +248,22 @@ fig.update_layout(
 fig.show()
 
 pdb.set_trace()
+
+
+def getLinearPoints(xs, zs, duration, max_speed, max_accel, num_pts):
+	dx = xs[1] - xs[0]
+	dz = zs[1] - zs[0]
+
+	path_length = np.sqrt(dx**2 + dy**2)
+	max_accel_duration = max_speed/max_accel
+	if duration > 2*max_accel_duration:
+		#the path is long enough that we're going to get a trapezoidal path
+		pass
+
+
+	return 0
+
+
 
 
 
