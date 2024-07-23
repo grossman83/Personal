@@ -31,7 +31,7 @@ q1_max_torque = 8#N*m
 q2_max_torque = 8#N*m
 
 
-a1_reduction = 10
+a1_reduction = 16
 a2_reduction = 10
 
 max_omega_rpm = 1200
@@ -74,16 +74,18 @@ xmesh = mesh[0]
 zmesh = mesh[1]
 
 
-# pdb.set_trace()
+#trying to get it to stop telling me about divide by zero and stuff.
 np.errstate(all='ignore')
-# pdb.set_trace()
+
+
+#named qn_up because this is the up solve for the x,z position. There
+#is another way to get to the same position and that is the down solve.
 q2_up = np.arccos((np.square(xmesh) + np.square(zmesh) - np.square(a1) - np.square(a2))/(2*a1*a2))
 q1_up = np.arctan(zmesh/xmesh) - np.arctan((a2*np.sin(q2_up))/(a1+a2*np.cos(q2_up)))
 
 xposForward = a1*np.cos(q1_up) + a2*np.cos(q1_up+q2_up)
 zposForward = a1*np.sin(q1_up) + a2*np.sin(q1_up+q2_up)
 
-# pdb.set_trace()
 
 fig = make_subplots(rows=3, cols=2, subplot_titles=(
 	'Thetas of Achievable Cartesian Points',
@@ -138,55 +140,61 @@ fig.add_trace(cart_pts_forward, row=1, col=2)
 
 delta = 1
 mesh_add = delta * np.ones([num_pts, num_pts])
-new_mesh = mesh + mesh_add
-new_xmesh = new_mesh[0]
-new_zmesh = new_mesh[1]
+
+#calculate dtheta/dx
+xmesh = mesh[0] + mesh_add
+zmesh = mesh[1]
+q2dx = np.arccos((np.square(xmesh) + np.square(zmesh) - np.square(a1) - np.square(a2))/(2*a1*a2))
+q1dx = np.arctan(zmesh/xmesh) - np.arctan((a2*np.sin(q2_up))/(a1+a2*np.cos(q2_up)))
+dq2dx = (q2dx - q2_up)/delta
+dq1dx = (q1dx - q1_up)/delta
 
 
+#calculate dtheta/dz
+xmesh = mesh[0]
+zmesh = mesh[1] + mesh_add
+q2dz = np.arccos((np.square(xmesh) + np.square(zmesh) - np.square(a1) - np.square(a2))/(2*a1*a2))
+q1dz = np.arctan(zmesh/xmesh) - np.arctan((a2*np.sin(q2_up))/(a1+a2*np.cos(q2_up)))
+dq2dz = (q2dz - q2_up)/delta
+dq1dz = (q1dz - q1_up)/delta
 
-#dtheta/dx
-
-new_q2_up = np.arccos((np.square(new_xmesh) + np.square(new_zmesh) - np.square(a1) - np.square(a2))/(2*a1*a2))
-new_q1_up = np.arctan(new_zmesh/new_xmesh) - np.arctan((a2*np.sin(q2_up))/(a1+a2*np.cos(q2_up)))
 
 #dtheta/dt = dtheta/dx * dx/dt (where dx/dt is max_cart_vel) [rad/s]
 #dtheta/dt^2 = dtheta/dx * dx/dt * dx/dt [rad/s2]
 
+# renamed these to dqndx and dqndz
+# dtheta1dx = (new_q1_up - q1_up)/delta#*cart_vel
+# dtheta2dx = (new_q2_up - q2_up)/delta#*cart_vel
 
 
+dq1xdt = dq1dx * max_cart_vel
+dq2xdt = dq2dx * max_cart_vel
 
-# not being used anyways.
-# def get_ratio(dthetadcart):
-# 	ratio = np.nanmax(np.abs(dthetadcart)) / np.nanmin(np.abs(dthetadcart))
-# 	return the_ratio
-
-
-dtheta1dx = (new_q1_up - q1_up)/delta#*cart_vel
-dtheta2dx = (new_q2_up - q2_up)/delta#*cart_vel
-
-dtheta1dt = dtheta1dx * max_cart_vel
-dtheta2dt = dtheta2dx * max_cart_vel
-
-dtheta1dtdt = dtheta1dt * max_cart_accel
-dtheta2dtdt = dtheta2dt * max_cart_accel
+dq1xdtdt = dq1xdt * max_cart_accel
+dq2xdtdt = dq2xdt * max_cart_accel
 
 
 
 # condition for bit-masking the stuff that is out of the ROM.
 # only need to check dtheta1 because it is based on dtheta 2 anyhow
-nancondition  = np.isnan(dtheta1dx)
+nancondition  = np.isnan(dq1dx)
 # now various maskings to make sure that we're below the max motor speed
 speed_condition = np.logical_and(
-	np.abs(dtheta1dt)<max_omega1,
-	np.abs(dtheta2dt)<max_omega2
+	np.abs(dq1xdt)<max_omega1,
+	np.abs(dq2xdt)<max_omega2
 	)
 
-#calculate torques.
-t2 = dtheta2dtdt * a2_inertia
+#calculate torques due to rotational accelerations of the joints.
+t2 = dq2xdtdt * a2_inertia
+
+#torque due to gravity.
 tg2 = -1 * a2_mass * a2_arm * np.cos(q2_up+q1_up)#gravity results in - torque
 t2 = t2 + tg2
 
-t1 = dtheta1dtdt*a1_inertia - np.cos(q1_up)*a1_mass*a1_arm + t2
+#@todo
+#need torques due to velocity.
+
+t1 = dq1xdtdt*a1_inertia - np.cos(q1_up)*a1_mass*a1_arm + t2
 
 torque_condition = np.logical_and(
 	np.abs(t1<gearbox1_max_torque), np.abs(t2<gearbox2_max_torque))
@@ -207,24 +215,27 @@ condition = np.logical_and(~nancondition, condition)
 
 
 
-# pdb.set_trace()
 
-
-dtheta1dx_plot = go.Scatter(
+dq1xdt_plot = go.Scatter(
     x=xmesh[condition].flatten(),
     y=zmesh[condition].flatten(),
     name='dtheta1/dx',
     mode='markers',
     marker=dict(
         size=3,
-        color=np.abs(dtheta1dx[condition].flatten()),
+        color=np.abs(dq1xdt[condition].flatten()),
         colorscale='plasma',
         colorbar=dict(title="dtheta1/dx"),
         coloraxis="coloraxis1"  # Link to the first color axis
     ),
     hovertemplate='%{marker.color:.4f}<extra></extra>'
 )
-fig.add_trace(dtheta1dx_plot, row=2, col=1,)
+fig.add_trace(dq1xdt_plot, row=2, col=1,)
+fig.update_layout(
+	width = 1800,
+	height = 2700,
+	)
+make_axes_equal(fig)
 fig.show()
 pdb.set_trace()
 
