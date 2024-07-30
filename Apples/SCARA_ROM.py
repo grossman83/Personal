@@ -28,17 +28,20 @@ a2_mass = 3.85#kg
 a1_arm = 0.213#m
 a2_arm = 0.257#m
 
-q1_max_torque = 6#N*m
-q2_max_torque = 6#N*m
+q1_max_torque = 8#N*m
+q2_max_torque = 8#N*m
 
 
 a1_reduction = 16
-a2_reduction = 10
+a2_reduction = 16
+
+a1_efficiency = 0.9
+a2_efficiency = 0.9
 
 max_omega_rpm = 1200
 max_torque = 100#N*m (omega**2 * inertia)
 
-max_cart_vel = 4000#mm/s
+max_cart_vel = 3000#mm/s
 accel_multiple = 10
 
 num_pts = 151
@@ -56,8 +59,8 @@ max_omega1 = max_omega_rpm * 2 * np.pi / 60 / a1_reduction
 max_omega2 = max_omega_rpm * 2 * np.pi / 60 / a2_reduction
 max_cart_accel = max_cart_vel * accel_multiple
 
-gearbox1_max_torque = q1_max_torque * a1_reduction
-gearbox2_max_torque = q2_max_torque * a2_reduction
+gearbox1_max_torque = q1_max_torque * a1_reduction * a1_efficiency
+gearbox2_max_torque = q2_max_torque * a2_reduction * a2_efficiency
 ################################ DERIVED ######################################
 
 
@@ -136,6 +139,9 @@ j2pos_x_flat = j2pos_x.flatten()
 j2pos_z_flat = j2pos_z.flatten()
 
 
+
+#################vectorize this#########################
+#########this is really slow####################
 line_indices = {}
 for i in range(len(j2pos_x_flat)):
 	line_indices[i] = []
@@ -145,12 +151,13 @@ for i in range(len(j2pos_x_flat)):
 		x = [0, j2pos_x_flat[i], xposForward_flat[i]],
 		y = [0, j2pos_z_flat[i], zposForward_flat[i]],
 		mode = 'lines',
-		line=dict(color='red', width=2),
+		line=dict(color='red', width=4),
 		showlegend=False,
 		hoverinfo='none',
 		visible=False,
 		)
 	fig2.add_trace(thescatter)
+#################vectorize this#########################
 
 fig2.update_layout(title='Click To Reveal',
 	hovermode='closest'
@@ -163,43 +170,6 @@ fig2.update_xaxes(scaleanchor=f"y{i}",
 fig2.update_yaxes(scaleanchor=f"x{i}",
 	scaleratio=1,
 	range=[-1500,1500])
-
-
-
-
-
-
-# JavaScript code to add click events (to be used with Plotly's HTML export)
-js_code = """
-document.querySelectorAll('.plotly-graph-div').forEach(function (div) {
-    div.on('plotly_click', function (data) {
-        var pointIndex = data.points[0].pointIndex;
-        var lines = %s[pointIndex];
-        var visibility = div.data[lines[0]].visible === true ? false : true;
-        var update = {'visible': visibility};
-        for (var i = 0; i < lines.length; i++) {
-            Plotly.restyle(div, update, [lines[i]]);
-        }
-    });
-});
-""" % (line_indices,)
-
-# Export to HTML with embedded JavaScript
-pio.write_html(fig2,
-	file='click_reveal_lines.html',
-	auto_open=True,
-	include_plotlyjs='cdn',
-	config={'displayModeBar': False},
-	post_script=js_code)
-
-
-
-
-
-
-
-
-
 
 
 
@@ -253,7 +223,7 @@ xmesh = mesh[0] + mesh_add
 zmesh = mesh[1]
 q2dx = np.arccos((np.square(xmesh) + np.square(zmesh) - np.square(a1) - np.square(a2))/(2*a1*a2))
 q1dx = np.arctan(zmesh/xmesh) - np.arctan((a2*np.sin(q2_up))/(a1+a2*np.cos(q2_up)))
-dq2dx = (q2dx - q2_up)/delta
+dq2dx = (q2dx - q2_up)/delta #rad/mm
 dq1dx = (q1dx - q1_up)/delta
 
 
@@ -262,20 +232,20 @@ xmesh = mesh[0]
 zmesh = mesh[1] + mesh_add
 q2dz = np.arccos((np.square(xmesh) + np.square(zmesh) - np.square(a1) - np.square(a2))/(2*a1*a2))
 q1dz = np.arctan(zmesh/xmesh) - np.arctan((a2*np.sin(q2_up))/(a1+a2*np.cos(q2_up)))
-dq2dz = (q2dz - q2_up)/delta
+dq2dz = (q2dz - q2_up)/delta #rad/mm
 dq1dz = (q1dz - q1_up)/delta
 
 
 
 #rotational velocity dtheta/dt for dx/dt
 #assumes that we're moving at maximum cartesian velocity parallel to x-axis
-dq1xdt = dq1dx * max_cart_vel
+dq1xdt = dq1dx * max_cart_vel #rad/mm * mm/s = rad/s
 dq2xdt = dq2dx * max_cart_vel
 dq1zdt = dq1dz * max_cart_vel
 dq2zdt = dq2dz * max_cart_vel
 
 #rotational acceleration for a path parallel to x-axis
-dq1xdtdt = dq1xdt * max_cart_accel
+dq1xdtdt = dq1xdt * max_cart_accel #rad/mm * mm/s2 = rad/s2
 dq2xdtdt = dq2xdt * max_cart_accel
 dq1zdtdt = dq1zdt * max_cart_accel
 dq2zdtdt = dq2zdt * max_cart_accel
@@ -305,7 +275,8 @@ t1 = dq1xdtdt*a1_inertia - np.cos(q1_up)*a1_mass*a1_arm + t2
 
 
 torque_condition = np.logical_and(
-	np.abs(t1<gearbox1_max_torque), np.abs(t2<gearbox2_max_torque))
+	np.abs(t1)<gearbox1_max_torque,
+	np.abs(t2)<gearbox2_max_torque)
 
 condition = np.logical_and(speed_condition, torque_condition)
 
@@ -313,6 +284,8 @@ condition = np.logical_and(speed_condition, torque_condition)
 #combine all conditions. If I don't remove the points that fail due
 #to torque or speed it screws up the scale on the plots.
 condition = np.logical_and(condition, ~nancondition)
+
+# pdb.set_trace()
 
 
 dq1xdt_plot = go.Scatter(
@@ -348,9 +321,8 @@ dq2xdt_plot = go.Scatter(
 
 
 #adjust conditions to only show unachievable points due to torque
-nancondition = nancondition
-torque_condition = t1<gearbox1_max_torque
-condition = np.logical_and(~nancondition, ~torque_condition)
+torque_condition = np.abs(t1)>gearbox1_max_torque
+condition = np.logical_and(~nancondition, torque_condition)
 
 
 dq1dxdt_torque_fail_plot = go.Scatter(
@@ -365,9 +337,8 @@ dq1dxdt_torque_fail_plot = go.Scatter(
 )
 
 
-nancondition = nancondition
-speed_condition = speed_condition
-condition = np.logical_and(~nancondition, ~speed_condition)
+speed_condition = np.abs(dq1xdt)>max_omega1
+condition = np.logical_and(~nancondition, speed_condition)
 
 dq1dxdt_speed_fail_plot = go.Scatter(
     x=xmesh[condition].flatten(),
@@ -387,9 +358,8 @@ fig.add_trace(dq1dxdt_speed_fail_plot, row=2, col=1,)
 
 #############################################
 
-nancondition = nancondition
-torque_condition = np.abs(t2)< gearbox2_max_torque
-condition = np.logical_and(~nancondition, ~speed_condition)
+torque_condition = np.abs(t2) > gearbox2_max_torque
+condition = np.logical_and(~nancondition, speed_condition)
 
 dq2dxdt_torque_fail_plot = go.Scatter(
     x=xmesh[condition].flatten(),
@@ -402,9 +372,8 @@ dq2dxdt_torque_fail_plot = go.Scatter(
     ),
 )
 
-nancondition = nancondition
-speed_condition = np.abs(dq2xdt)<max_omega2
-condition = np.logical_and(~nancondition, ~speed_condition)
+speed_condition = np.abs(dq2xdt)>max_omega2
+condition = np.logical_and(~nancondition, speed_condition)
 
 dq2dxdt_speed_fail_plot = go.Scatter(
     x=xmesh[condition].flatten(),
@@ -449,7 +418,7 @@ dq1dz = (q1dz - q1_up)/delta
 #conditions
 # condition for bit-masking the stuff that is out of the ROM.
 # only need to check dtheta1 because it is based on dtheta 2 anyhow
-nancondition  = np.isnan(dq1dx)
+nancondition  = np.isnan(dq1dz)
 
 # check that we're below the max motor/geaerbox speed
 speed_condition = np.logical_and(
@@ -462,6 +431,7 @@ t2 = dq2zdtdt * a2_inertia
 
 #torque due to gravity.
 tg2 = -1 * a2_mass * a2_arm * np.cos(q2_up+q1_up)#gravity results in - torque
+
 t2 = t2 + tg2
 t1 = dq1zdtdt*a1_inertia - np.cos(q1_up)*a1_mass*a1_arm + t2
 
@@ -470,7 +440,7 @@ t1 = dq1zdtdt*a1_inertia - np.cos(q1_up)*a1_mass*a1_arm + t2
 
 
 torque_condition = np.logical_and(
-	np.abs(t1<gearbox1_max_torque), np.abs(t2<gearbox2_max_torque))
+	np.abs(t1)<gearbox1_max_torque, np.abs(t2)<gearbox2_max_torque)
 
 condition = np.logical_and(speed_condition, torque_condition)
 
@@ -478,7 +448,6 @@ condition = np.logical_and(speed_condition, torque_condition)
 #combine all conditions. If I don't remove the points that fail due
 #to torque or speed it screws up the scale on the plots.
 condition = np.logical_and(condition, ~nancondition)
-
 
 
 dq1dz_plot = go.Scatter(
@@ -507,7 +476,7 @@ dq2dz_plot = go.Scatter(
         color=np.abs(dq2zdt[condition].flatten()),
         colorscale='plasma',
         colorbar=dict(title="dq2/dz"),
-        coloraxis="coloraxis4" # Link to the second color axis
+        coloraxis="coloraxis4" # Link to the proper color axis
     ),
     hovertemplate='%{marker.color:.1f}<extra></extra>',
 )
@@ -521,9 +490,8 @@ fig.add_trace(dq2dz_plot, row=3, col=2,)
 
 #######################################
 #adjust conditions to only show unachievable points due to torque
-nancondition = nancondition
-torque_condition = t1<gearbox1_max_torque
-condition = np.logical_and(~nancondition, ~torque_condition)
+torque_condition = np.abs(t1)>gearbox1_max_torque
+condition = np.logical_and(~nancondition, torque_condition)
 
 
 dq1dzdt_torque_fail_plot = go.Scatter(
@@ -538,9 +506,8 @@ dq1dzdt_torque_fail_plot = go.Scatter(
 )
 
 
-nancondition = nancondition
-speed_condition = speed_condition
-condition = np.logical_and(~nancondition, ~speed_condition)
+speed_condition = np.abs(dq1zdt)>max_omega1
+condition = np.logical_and(~nancondition, speed_condition)
 
 dq1dzdt_speed_fail_plot = go.Scatter(
     x=xmesh[condition].flatten(),
@@ -558,9 +525,8 @@ fig.add_trace(dq1dzdt_speed_fail_plot, row=3, col=1)
 
 
 
-nancondition = nancondition
-torque_condition = t2<gearbox2_max_torque
-condition = np.logical_and(~nancondition, ~torque_condition)
+torque_condition = np.abs(t2)>gearbox2_max_torque
+condition = np.logical_and(~nancondition, torque_condition)
 
 
 dq2dzdt_torque_fail_plot = go.Scatter(
@@ -574,7 +540,8 @@ dq2dzdt_torque_fail_plot = go.Scatter(
     ),
 )
 
-
+speed_condition = np.abs(dq1zdt)>max_omega2
+condition = np.logical_and(~nancondition, speed_condition)
 
 dq2dzdt_speed_fail_plot = go.Scatter(
     x=xmesh[condition].flatten(),
@@ -589,21 +556,10 @@ dq2dzdt_speed_fail_plot = go.Scatter(
 
 fig.add_trace(dq2dzdt_torque_fail_plot, row=3, col=2)
 fig.add_trace(dq2dzdt_speed_fail_plot, row=3, col=2)
-
-
-
-
-
-
-
-
-
-
-
 # Update the layout to include separate color axes
 fig.update_layout(
-    coloraxis3=dict(colorscale='plasma', colorbar=dict(title="dq1dz", x=0.45, y=0.15, len=0.3)),
-    coloraxis4=dict(colorscale='plasma', colorbar=dict(title="dq2dz", x=1.0, y=0.15, len=0.3))
+    coloraxis3=dict(colorscale='plasma', colorbar=dict(title="dq1dz", x=0.45, y=0.1, len=0.3)),
+    coloraxis4=dict(colorscale='plasma', colorbar=dict(title="dq2dz", x=1.0, y=0.1, len=0.3))
 )
 
 
@@ -616,8 +572,34 @@ make_axes_equal(fig)
 
 
 
+# JavaScript code to add click events (to be used with Plotly's HTML export)
+js_code = """
+document.querySelectorAll('.plotly-graph-div').forEach(function (div) {
+    div.on('plotly_click', function (data) {
+        var pointIndex = data.points[0].pointIndex;
+        var lines = %s[pointIndex];
+        var visibility = div.data[lines[0]].visible === true ? false : true;
+        var update = {'visible': visibility};
+        for (var i = 0; i < lines.length; i++) {
+            Plotly.restyle(div, update, [lines[i]]);
+        }
+    });
+});
+""" % (line_indices,)
 
-fig2.show(config={'displayModeBar': False})
+# Export to HTML with embedded JavaScript
+pio.write_html(fig2,
+	file='click_reveal_lines.html',
+	auto_open=True,
+	include_plotlyjs='cdn',
+	config={'displayModeBar': False},
+	post_script=js_code)
+
+
+
+
+
+# fig2.show(config={'displayModeBar': False})
 fig.show()
 
 pdb.set_trace()
