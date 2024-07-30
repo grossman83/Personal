@@ -28,20 +28,20 @@ a2_mass = 3.85#kg
 a1_arm = 0.213#m
 a2_arm = 0.257#m
 
-q1_max_torque = 8#N*m
-q2_max_torque = 8#N*m
+q1_max_torque = 6#N*m
+q2_max_torque = 6#N*m
 
 
 a1_reduction = 16
-a2_reduction = 16
+a2_reduction = 8
 
 a1_efficiency = 0.9
 a2_efficiency = 0.9
 
 max_omega_rpm = 1200
-max_torque = 100#N*m (omega**2 * inertia)
+# max_torque = 100#N*m (omega**2 * inertia)#unused
 
-max_cart_vel = 3000#mm/s
+max_cart_vel = 4000#mm/s
 accel_multiple = 10
 
 num_pts = 151
@@ -245,10 +245,10 @@ dq1zdt = dq1dz * max_cart_vel
 dq2zdt = dq2dz * max_cart_vel
 
 #rotational acceleration for a path parallel to x-axis
-dq1xdtdt = dq1xdt * max_cart_accel #rad/mm * mm/s2 = rad/s2
-dq2xdtdt = dq2xdt * max_cart_accel
-dq1zdtdt = dq1zdt * max_cart_accel
-dq2zdtdt = dq2zdt * max_cart_accel
+dq1xdtdt = dq1dx * max_cart_accel #rad/mm * mm/s2 = rad/s2
+dq2xdtdt = dq2dx * max_cart_accel
+dq1zdtdt = dq1dz * max_cart_accel
+dq2zdtdt = dq2dz * max_cart_accel
 
 
 
