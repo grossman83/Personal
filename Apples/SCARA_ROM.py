@@ -3,6 +3,7 @@ import shapely as sg
 import plotly.graph_objects as go
 import plotly.express as px
 from plotly.subplots import make_subplots
+import plotly.io as pio
 import pdb
 
 
@@ -27,8 +28,8 @@ a2_mass = 3.85#kg
 a1_arm = 0.213#m
 a2_arm = 0.257#m
 
-q1_max_torque = 8#N*m
-q2_max_torque = 8#N*m
+q1_max_torque = 6#N*m
+q2_max_torque = 6#N*m
 
 
 a1_reduction = 16
@@ -37,7 +38,7 @@ a2_reduction = 10
 max_omega_rpm = 1200
 max_torque = 100#N*m (omega**2 * inertia)
 
-max_cart_vel = 3000#mm/s
+max_cart_vel = 4000#mm/s
 accel_multiple = 10
 
 num_pts = 151
@@ -60,14 +61,15 @@ gearbox2_max_torque = q2_max_torque * a2_reduction
 ################################ DERIVED ######################################
 
 
-
+#linspace of points in x and z
 xpos = np.linspace(0,1500, num_pts)
 zpos = np.linspace(-1500, 1500, num_pts)
 
+#same shape grid of the arm lengths
 a1 = a1_length * np.ones([num_pts, num_pts])
 a2 = a2_length * np.ones([num_pts, num_pts])
 
-
+#make linspace into a mesh of points to try
 mesh = np.meshgrid(xpos, zpos)
 
 xmesh = mesh[0]
@@ -87,6 +89,12 @@ xposForward = a1*np.cos(q1_up) + a2*np.cos(q1_up+q2_up)
 zposForward = a1*np.sin(q1_up) + a2*np.sin(q1_up+q2_up)
 
 
+
+
+
+
+
+
 fig = make_subplots(rows=3, cols=2, subplot_titles=(
 	'Thetas of Achievable Cartesian Points',
 		'Achievable Cartesian Points',
@@ -96,6 +104,110 @@ fig = make_subplots(rows=3, cols=2, subplot_titles=(
 		'dtheta2/dz',
 		)
 )
+
+
+fig2 = go.Figure()
+
+#create lines that can be revealed upon clicking on the end-point
+#this will show the arms when a point is clicked. All I really need
+#is the intermediate point because we know that the first point is the
+#origin, and the last point is the point clicked. This point is simply
+#the position of the second joint.
+
+# pdb.set_trace()
+
+
+cart_pts_forward = go.Scatter(
+	x = xposForward.flatten(),
+	y = zposForward.flatten(),
+	mode = "markers",
+	marker=dict(size=3, color="green"),
+	name="Points",
+	)
+
+fig2.add_trace(cart_pts_forward)
+
+j2pos_x = a1*np.cos(q1_up)
+j2pos_z = a1*np.sin(q1_up)
+
+
+xposForward_flat = xposForward.flatten()
+zposForward_flat = zposForward.flatten()
+j2pos_x_flat = j2pos_x.flatten()
+j2pos_z_flat = j2pos_z.flatten()
+
+
+line_indices = {}
+for i in range(len(j2pos_x_flat)):
+	line_indices[i] = []
+	line_idx = len(fig2.data)
+	line_indices[i].append(line_idx)
+	thescatter = go.Scatter(
+		x = [0, j2pos_x_flat[i], xposForward_flat[i]],
+		y = [0, j2pos_z_flat[i], zposForward_flat[i]],
+		mode = 'lines',
+		line=dict(color='red', width=2),
+		showlegend=False,
+		hoverinfo='none',
+		visible=False,
+		)
+	fig2.add_trace(thescatter)
+	# pdb.set_trace()
+fig2.update_layout(title='Click To Reveal',
+	hovermode='closest'
+	)
+
+i=1
+fig2.update_xaxes(scaleanchor=f"y{i}",
+	scaleratio=1,
+	range=[-1000,2000])
+fig2.update_yaxes(scaleanchor=f"x{i}",
+	scaleratio=1,
+	range=[-1500,1500])
+
+
+fig2.show(config={'displayModeBar': False})
+
+
+
+# JavaScript code to add click events (to be used with Plotly's HTML export)
+js_code = """
+document.querySelectorAll('.plotly-graph-div').forEach(function (div) {
+    div.on('plotly_click', function (data) {
+        var pointIndex = data.points[0].pointIndex;
+        var lines = %s[pointIndex];
+        var visibility = div.data[lines[0]].visible === true ? false : true;
+        var update = {'visible': visibility};
+        for (var i = 0; i < lines.length; i++) {
+            Plotly.restyle(div, update, [lines[i]]);
+        }
+    });
+});
+""" % (line_indices,)
+
+# Export to HTML with embedded JavaScript
+pio.write_html(fig2,
+	file='click_reveal_lines.html',
+	auto_open=True,
+	include_plotlyjs='cdn',
+	config={'displayModeBar': False},
+	post_script=js_code)
+
+
+
+
+# pdb.set_trace()
+
+
+
+
+
+
+
+
+
+
+
 
 
 angle_pts = go.Scatter(
@@ -108,6 +220,7 @@ angle_pts = go.Scatter(
 fig.add_trace(angle_pts, row=1, col=1)
 
 
+# two plots to get an overlay of points achievable and not achievable
 cart_pts = go.Scatter(
 	x = xmesh.flatten(),
 	y = zmesh.flatten(),
@@ -116,9 +229,6 @@ cart_pts = go.Scatter(
 	name="Cartesian Points Attempted",
 	)
 fig.add_trace(cart_pts, row=1, col=2)
-
-
-fig.update_xaxes(title_text = 'blah', row=1, col=2)
 
 cart_pts_forward = go.Scatter(
 	x = xposForward.flatten(),
@@ -159,17 +269,13 @@ dq2dz = (q2dz - q2_up)/delta
 dq1dz = (q1dz - q1_up)/delta
 
 
-#dtheta/dt = dtheta/dx * dx/dt (where dx/dt is max_cart_vel) [rad/s]
-#dtheta/dt^2 = dtheta/dx * dx/dt * dx/dt [rad/s2]
 
-# renamed these to dqndx and dqndz
-# dtheta1dx = (new_q1_up - q1_up)/delta#*cart_vel
-# dtheta2dx = (new_q2_up - q2_up)/delta#*cart_vel
-
-
+#rotational velocity dtheta/dt for dx/dt
+#assumes that we're moving at maximum cartesian velocity parallel to x-axis
 dq1xdt = dq1dx * max_cart_vel
 dq2xdt = dq2dx * max_cart_vel
 
+#rotational acceleration for a path parallel to x-axis
 dq1xdtdt = dq1xdt * max_cart_accel
 dq2xdtdt = dq2xdt * max_cart_accel
 
@@ -178,7 +284,8 @@ dq2xdtdt = dq2xdt * max_cart_accel
 # condition for bit-masking the stuff that is out of the ROM.
 # only need to check dtheta1 because it is based on dtheta 2 anyhow
 nancondition  = np.isnan(dq1dx)
-# now various maskings to make sure that we're below the max motor speed
+
+# check that we're below the max motor/geaerbox speed
 speed_condition = np.logical_and(
 	np.abs(dq1xdt)<max_omega1,
 	np.abs(dq2xdt)<max_omega2
@@ -190,11 +297,11 @@ t2 = dq2xdtdt * a2_inertia
 #torque due to gravity.
 tg2 = -1 * a2_mass * a2_arm * np.cos(q2_up+q1_up)#gravity results in - torque
 t2 = t2 + tg2
+t1 = dq1xdtdt*a1_inertia - np.cos(q1_up)*a1_mass*a1_arm + t2
 
 #@todo
-#need torques due to velocity.
+#need torques due to velocity. (dynamics)
 
-t1 = dq1xdtdt*a1_inertia - np.cos(q1_up)*a1_mass*a1_arm + t2
 
 torque_condition = np.logical_and(
 	np.abs(t1<gearbox1_max_torque), np.abs(t2<gearbox2_max_torque))
@@ -202,18 +309,9 @@ torque_condition = np.logical_and(
 condition = np.logical_and(speed_condition, torque_condition)
 
 
-#combine all conditions
-condition = np.logical_and(~nancondition, condition)
-
-
-#Trying a way to combine many logical arrays into one with and
-# condition_test = np.logical_and.reduce((
-# 	nancondition,
-# 	np.abs(dtheta1dt)<max_omega1,
-# 	np.abs(dtheta2dt)<max_omega2
-# 	 ))
-
-
+#combine all conditions. If I don't remove the points that fail due
+#to torque or speed it screws up the scale on the plots.
+condition = np.logical_and(condition, ~nancondition)
 
 
 dq1xdt_plot = go.Scatter(
@@ -221,49 +319,156 @@ dq1xdt_plot = go.Scatter(
     y=zmesh[condition].flatten(),
     name='dtheta1/dx',
     mode='markers',
+    hoverinfo='none',
     marker=dict(
         size=3,
         color=np.abs(dq1xdt[condition].flatten()),
         colorscale='plasma',
-        colorbar=dict(title="dtheta1/dx"),
-        coloraxis="coloraxis1"  # Link to the first color axis
+        colorbar=dict(title="dq1/dx"),
+        coloraxis="coloraxis1",  # Link to the first color axis
     ),
-    hovertemplate='%{marker.color:.4f}<extra></extra>'
+    hovertemplate='%{marker.color:.1f}<extra></extra>'
 )
+
+dq2xdt_plot = go.Scatter(
+    x=xmesh[condition].flatten(),
+    y=zmesh[condition].flatten(),
+    name='dtheta2/dx',
+    mode='markers',
+    marker=dict(
+        size=3,
+        color=np.abs(dq2xdt[condition].flatten()),
+        colorscale='plasma',
+        colorbar=dict(title="dq2/dx"),
+        coloraxis="coloraxis2"  # Link to the second color axis
+    ),
+    hovertemplate='%{marker.color:.1f}<extra></extra>'
+)
+
+
+#adjust conditions to only show unachievable points due to torque
+nancondition = nancondition
+torque_condition = t1<gearbox1_max_torque
+condition = np.logical_and(~nancondition, ~torque_condition)
+
+
+dq1dxdt_torque_fail_plot = go.Scatter(
+    x=xmesh[condition].flatten(),
+    y=zmesh[condition].flatten(),
+    name='dtheta1/dx',
+    mode='markers',
+    marker=dict(
+        size=3,
+        color='red',
+    ),
+)
+
+
+nancondition = nancondition
+speed_condition = speed_condition
+condition = np.logical_and(~nancondition, ~speed_condition)
+
+dq1dxdt_speed_fail_plot = go.Scatter(
+    x=xmesh[condition].flatten(),
+    y=zmesh[condition].flatten(),
+    name='dtheta1/dx',
+    mode='markers',
+    marker=dict(
+        size=3,
+        color='black',
+    ),
+)
+
+
 fig.add_trace(dq1xdt_plot, row=2, col=1,)
+fig.add_trace(dq1dxdt_torque_fail_plot, row=2, col=1,)
+fig.add_trace(dq1dxdt_speed_fail_plot, row=2, col=1,)
+
+#############################################
+
+nancondition = nancondition
+torque_condition = np.abs(t2)< gearbox2_max_torque
+condition = np.logical_and(~nancondition, ~speed_condition)
+
+dq2dxdt_torque_fail_plot = go.Scatter(
+    x=xmesh[condition].flatten(),
+    y=zmesh[condition].flatten(),
+    name='dtheta2/dx',
+    mode='markers',
+    marker=dict(
+        size=3,
+        color='red',
+    ),
+)
+
+nancondition = nancondition
+speed_condition = np.abs(dq2xdt)<max_omega2
+condition = np.logical_and(~nancondition, ~speed_condition)
+
+dq2dxdt_speed_fail_plot = go.Scatter(
+    x=xmesh[condition].flatten(),
+    y=zmesh[condition].flatten(),
+    name='dtheta2/dx',
+    mode='markers',
+    marker=dict(
+        size=3,
+        color='black',
+    ),
+)
+
+fig.add_trace(dq2xdt_plot, row=2, col=2,)
+fig.add_trace(dq2dxdt_torque_fail_plot, row=2, col=2,)
+fig.add_trace(dq2dxdt_speed_fail_plot, row=2, col=2,)
+
+
+# dq1xdt_fail_t = go.Scatter(
+#     x=xmesh[condition].flatten(),
+#     y=zmesh[condition].flatten(),
+#     name='dtheta1/dx',
+#     mode='markers',
+#     marker=dict(
+#         size=3,
+#         color=np.abs(dq1xdt[condition].flatten()),
+#         colorscale='plasma',
+#         colorbar=dict(title="dtheta1/dx"),
+#         coloraxis="coloraxis1"  # Link to the first color axis
+#     ),
+# )
+
+
+
 fig.update_layout(
 	width = 1800,
 	height = 2700,
 	)
 make_axes_equal(fig)
-fig.show()
-pdb.set_trace()
 
-dtheta2dx_plot = go.Scatter(
-    x=xmesh[~condition].flatten(),
-    y=zmesh[~condition].flatten(),
-    name='dtheta2/dx',
-    mode='markers',
-    marker=dict(
-        size=3,
-        color=np.abs(dtheta2dx[~condition].flatten()),
-        colorscale='plasma',
-        colorbar=dict(title="dtheta2/dx"),
-        coloraxis="coloraxis2"  # Link to the second color axis
-    ),
-    hovertemplate='%{marker.color:.4f}<extra></extra>'
-)
+
 
 # Add traces to the figure
-fig.add_trace(dtheta1dx_plot, row=2, col=1,)
-fig.add_trace(dtheta2dx_plot, row=2, col=2,)
-# fig.update_layout(title_text='dtheta2/dx')
+fig.add_trace(dq1xdt_plot, row=2, col=1,)
+fig.add_trace(dq2xdt_plot, row=2, col=2,)
+fig.update_layout(title_text='dtheta2/dx')
 
-# Update the layout to include separate color axes
+# fig.update_xaxes(nticks=)
+fig.update_xaxes(minor=dict(ticklen=6, tickcolor="black", showgrid=True))
+fig.update_xaxes(minor_ticks="inside")
+
+fig.update_yaxes(minor=dict(ticklen=6, tickcolor="black", showgrid=True))
+fig.update_yaxes(minor_ticks="inside")
+
+
+# Update the layout to include separate color axes and locate them on the page
 fig.update_layout(
     coloraxis1=dict(colorscale='plasma', colorbar=dict(title="dtheta1dx", x=0.45, y=0.5, len=0.3)),
     coloraxis2=dict(colorscale='plasma', colorbar=dict(title="dtheta2dx", x=1.0, y=0.5, len=0.3))
 )
+
+
+
+pdb.set_trace()
+
+
 
 
 
