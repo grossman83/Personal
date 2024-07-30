@@ -114,7 +114,6 @@ fig2 = go.Figure()
 #origin, and the last point is the point clicked. This point is simply
 #the position of the second joint.
 
-# pdb.set_trace()
 
 
 cart_pts_forward = go.Scatter(
@@ -152,7 +151,7 @@ for i in range(len(j2pos_x_flat)):
 		visible=False,
 		)
 	fig2.add_trace(thescatter)
-	# pdb.set_trace()
+
 fig2.update_layout(title='Click To Reveal',
 	hovermode='closest'
 	)
@@ -195,8 +194,6 @@ pio.write_html(fig2,
 
 
 
-
-# pdb.set_trace()
 
 
 
@@ -274,10 +271,14 @@ dq1dz = (q1dz - q1_up)/delta
 #assumes that we're moving at maximum cartesian velocity parallel to x-axis
 dq1xdt = dq1dx * max_cart_vel
 dq2xdt = dq2dx * max_cart_vel
+dq1zdt = dq1dz * max_cart_vel
+dq2zdt = dq2dz * max_cart_vel
 
 #rotational acceleration for a path parallel to x-axis
 dq1xdtdt = dq1xdt * max_cart_accel
 dq2xdtdt = dq2xdt * max_cart_accel
+dq1zdtdt = dq1zdt * max_cart_accel
+dq2zdtdt = dq2zdt * max_cart_accel
 
 
 
@@ -324,7 +325,7 @@ dq1xdt_plot = go.Scatter(
         size=3,
         color=np.abs(dq1xdt[condition].flatten()),
         colorscale='plasma',
-        colorbar=dict(title="dq1/dx"),
+        colorbar=dict(title="dq1x/dt"),
         coloraxis="coloraxis1",  # Link to the first color axis
     ),
     hovertemplate='%{marker.color:.1f}<extra></extra>'
@@ -339,7 +340,7 @@ dq2xdt_plot = go.Scatter(
         size=3,
         color=np.abs(dq2xdt[condition].flatten()),
         colorscale='plasma',
-        colorbar=dict(title="dq2/dx"),
+        colorbar=dict(title="dq2x/dt"),
         coloraxis="coloraxis2"  # Link to the second color axis
     ),
     hovertemplate='%{marker.color:.1f}<extra></extra>'
@@ -420,41 +421,6 @@ fig.add_trace(dq2xdt_plot, row=2, col=2,)
 fig.add_trace(dq2dxdt_torque_fail_plot, row=2, col=2,)
 fig.add_trace(dq2dxdt_speed_fail_plot, row=2, col=2,)
 
-
-# dq1xdt_fail_t = go.Scatter(
-#     x=xmesh[condition].flatten(),
-#     y=zmesh[condition].flatten(),
-#     name='dtheta1/dx',
-#     mode='markers',
-#     marker=dict(
-#         size=3,
-#         color=np.abs(dq1xdt[condition].flatten()),
-#         colorscale='plasma',
-#         colorbar=dict(title="dtheta1/dx"),
-#         coloraxis="coloraxis1"  # Link to the first color axis
-#     ),
-# )
-
-
-
-fig.update_layout(
-	width = 1800,
-	height = 2700,
-	)
-make_axes_equal(fig)
-
-fig2.show(config={'displayModeBar': False})
-fig.show()
-
-pdb.set_trace()
-
-
-
-# Add traces to the figure
-fig.add_trace(dq1xdt_plot, row=2, col=1,)
-fig.add_trace(dq2xdt_plot, row=2, col=2,)
-fig.update_layout(title_text='dtheta2/dx')
-
 # fig.update_xaxes(nticks=)
 fig.update_xaxes(minor=dict(ticklen=6, tickcolor="black", showgrid=True))
 fig.update_xaxes(minor_ticks="inside")
@@ -471,68 +437,173 @@ fig.update_layout(
 
 
 
-pdb.set_trace()
+#calculate dtheta/dz
+xmesh = mesh[0] 
+zmesh = mesh[1] + mesh_add
+q2dz = np.arccos((np.square(xmesh) + np.square(zmesh) - np.square(a1) - np.square(a2))/(2*a1*a2))
+q1dz = np.arctan(zmesh/xmesh) - np.arctan((a2*np.sin(q2_up))/(a1+a2*np.cos(q2_up)))
+dq2dz = (q2dz - q2_up)/delta
+dq1dz = (q1dz - q1_up)/delta
+
+
+#conditions
+# condition for bit-masking the stuff that is out of the ROM.
+# only need to check dtheta1 because it is based on dtheta 2 anyhow
+nancondition  = np.isnan(dq1dx)
+
+# check that we're below the max motor/geaerbox speed
+speed_condition = np.logical_and(
+	np.abs(dq1zdt)<max_omega1,
+	np.abs(dq2zdt)<max_omega2
+	)
+
+#calculate torques due to rotational accelerations of the joints.
+t2 = dq2zdtdt * a2_inertia
+
+#torque due to gravity.
+tg2 = -1 * a2_mass * a2_arm * np.cos(q2_up+q1_up)#gravity results in - torque
+t2 = t2 + tg2
+t1 = dq1zdtdt*a1_inertia - np.cos(q1_up)*a1_mass*a1_arm + t2
+
+#@todo
+#need torques due to velocity. (dynamics)
+
+
+torque_condition = np.logical_and(
+	np.abs(t1<gearbox1_max_torque), np.abs(t2<gearbox2_max_torque))
+
+condition = np.logical_and(speed_condition, torque_condition)
+
+
+#combine all conditions. If I don't remove the points that fail due
+#to torque or speed it screws up the scale on the plots.
+condition = np.logical_and(condition, ~nancondition)
 
 
 
-
-
-#dtheta/dy
-new_q2_up = np.arccos((np.square(xmesh) + np.square(new_zmesh) - np.square(a1) - np.square(a2))/(2*a1*a2))
-new_q1_up = np.arctan(new_zmesh/xmesh) - np.arctan((a2*np.sin(q2_up))/(a1+a2*np.cos(q2_up)))
-
-dtheta1dz = (new_q1_up - q1_up)/1
-dtheta2dz = (new_q2_up - q2_up)/1
-
-condition  = np.isnan(dtheta1dz)#only need to check dtheta1 because it's calculated from dtheta2 anyways
-condition2 = np.logical_and(np.abs(dtheta1dz)>0.0005, np.abs(dtheta1dz)<0.01)
-all_conditions = np.logical_and(~condition, condition2)
-
-
-# Create the scatter plots for dtheta/dy
-dtheta1dz_plot = go.Scatter(
-    x=xmesh[all_conditions].flatten(),
-    y=zmesh[all_conditions].flatten(),
-    name='dthe1dz',
+dq1dz_plot = go.Scatter(
+    x=xmesh[condition].flatten(),
+    y=zmesh[condition].flatten(),
+    name='dq1dz',
     mode='markers',
     marker=dict(
         size=3,
-        color=np.abs(dtheta1dz[all_conditions].flatten()),
+        color=np.abs(dq1zdt[condition].flatten()),
         colorscale='plasma',
-        colorbar=dict(title="dtheta1/dz"),
-        coloraxis="coloraxis3"  # Link to the first color axis
+        colorbar=dict(title="dq1/dz"),
+        coloraxis="coloraxis3"  # Link to the proper color axis
     ),
-    hovertemplate='%{marker.color:.4f}<extra></extra>',
+    hovertemplate='%{marker.color:.1f}<extra></extra>',
 )
 
-condition2 = np.logical_and(np.abs(dtheta2dz)>0.001, np.abs(dtheta2dz)<0.01)
-all_conditions = np.logical_and(~condition, condition2)
 
-
-# Create the second scatter plot
-dtheta2dz_plot = go.Scatter(
-    x=xmesh[all_conditions].flatten(),
-    y=zmesh[all_conditions].flatten(),
-    name='dtheta2dz',
+dq2dz_plot = go.Scatter(
+    x=xmesh[condition].flatten(),
+    y=zmesh[condition].flatten(),
+    name='dq2dz',
     mode='markers',
     marker=dict(
         size=3,
-        color=np.abs(dtheta2dz[all_conditions].flatten()),
+        color=np.abs(dq2zdt[condition].flatten()),
         colorscale='plasma',
-        colorbar=dict(title="dtheta2/dz"),
+        colorbar=dict(title="dq2/dz"),
         coloraxis="coloraxis4" # Link to the second color axis
     ),
-    hovertemplate='%{marker.color:.4f}<extra></extra>',
+    hovertemplate='%{marker.color:.1f}<extra></extra>',
 )
 
-# Add traces to the figure
-fig.add_trace(dtheta1dz_plot, row=3, col=1,)
-fig.add_trace(dtheta2dz_plot, row=3, col=2,)
+#add both plots to the figure
+fig.add_trace(dq1dz_plot, row=3, col=1,)
+fig.add_trace(dq2dz_plot, row=3, col=2,)
+
+
+
+
+#######################################
+#adjust conditions to only show unachievable points due to torque
+nancondition = nancondition
+torque_condition = t1<gearbox1_max_torque
+condition = np.logical_and(~nancondition, ~torque_condition)
+
+
+dq1dzdt_torque_fail_plot = go.Scatter(
+    x=xmesh[condition].flatten(),
+    y=zmesh[condition].flatten(),
+    name='dq1/dz',
+    mode='markers',
+    marker=dict(
+        size=3,
+        color='red',
+    ),
+)
+
+
+nancondition = nancondition
+speed_condition = speed_condition
+condition = np.logical_and(~nancondition, ~speed_condition)
+
+dq1dzdt_speed_fail_plot = go.Scatter(
+    x=xmesh[condition].flatten(),
+    y=zmesh[condition].flatten(),
+    name='dq1/dz',
+    mode='markers',
+    marker=dict(
+        size=3,
+        color='black',
+    ),
+)
+
+fig.add_trace(dq1dzdt_torque_fail_plot, row=3, col=1)
+fig.add_trace(dq1dzdt_speed_fail_plot, row=3, col=1)
+
+
+
+nancondition = nancondition
+torque_condition = t2<gearbox2_max_torque
+condition = np.logical_and(~nancondition, ~torque_condition)
+
+
+dq2dzdt_torque_fail_plot = go.Scatter(
+    x=xmesh[condition].flatten(),
+    y=zmesh[condition].flatten(),
+    name='dq1/dz',
+    mode='markers',
+    marker=dict(
+        size=3,
+        color='red',
+    ),
+)
+
+
+
+dq2dzdt_speed_fail_plot = go.Scatter(
+    x=xmesh[condition].flatten(),
+    y=zmesh[condition].flatten(),
+    name='dq1/dz',
+    mode='markers',
+    marker=dict(
+        size=3,
+        color='black',
+    ),
+)
+
+fig.add_trace(dq2dzdt_torque_fail_plot, row=3, col=2)
+fig.add_trace(dq2dzdt_speed_fail_plot, row=3, col=2)
+
+
+
+
+
+
+
+
+
+
 
 # Update the layout to include separate color axes
 fig.update_layout(
-    coloraxis3=dict(colorscale='plasma', colorbar=dict(title="dtheta1dz", x=0.45, y=0.15, len=0.3)),
-    coloraxis4=dict(colorscale='plasma', colorbar=dict(title="dtheta2dz", x=1.0, y=0.15, len=0.3))
+    coloraxis3=dict(colorscale='plasma', colorbar=dict(title="dq1dz", x=0.45, y=0.15, len=0.3)),
+    coloraxis4=dict(colorscale='plasma', colorbar=dict(title="dq2dz", x=1.0, y=0.15, len=0.3))
 )
 
 
@@ -546,10 +617,42 @@ make_axes_equal(fig)
 
 
 
-# Show the plot
+fig2.show(config={'displayModeBar': False})
 fig.show()
 
 pdb.set_trace()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 # this was meant to work on the motion and timing. I'll come back to it later.
