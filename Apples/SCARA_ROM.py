@@ -166,7 +166,7 @@ fig2.update_yaxes(scaleanchor=f"x{i}",
 	range=[-1500,1500])
 
 
-fig2.show(config={'displayModeBar': False})
+
 
 
 
@@ -442,6 +442,11 @@ fig.update_layout(
 	height = 2700,
 	)
 make_axes_equal(fig)
+
+fig2.show(config={'displayModeBar': False})
+fig.show()
+
+pdb.set_trace()
 
 
 
