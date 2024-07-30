@@ -28,21 +28,20 @@ a2_mass = 3.85#kg
 a1_arm = 0.213#m
 a2_arm = 0.257#m
 
-q1_max_torque = 6#N*m
-q2_max_torque = 6#N*m
+q1_max_torque = 4#N*m
+q2_max_torque = 4#N*m
 
 
 a1_reduction = 16
-a2_reduction = 8
+a2_reduction = 7
 
 a1_efficiency = 0.9
 a2_efficiency = 0.9
 
-max_omega_rpm = 1200
-# max_torque = 100#N*m (omega**2 * inertia)#unused
+max_omega_rpm = 900
 
-max_cart_vel = 4000#mm/s
-accel_multiple = 10
+max_cart_vel = 3000#mm/s
+accel_mult = 10#unitless
 
 num_pts = 151
 ################################ INPUTS ######################################
@@ -57,7 +56,7 @@ a1_inertia = a1_mass * a1_arm**2
 a2_inertia = a2_mass * a2_arm**2
 max_omega1 = max_omega_rpm * 2 * np.pi / 60 / a1_reduction
 max_omega2 = max_omega_rpm * 2 * np.pi / 60 / a2_reduction
-max_cart_accel = max_cart_vel * accel_multiple
+max_cart_accel = max_cart_vel * accel_mult
 
 gearbox1_max_torque = q1_max_torque * a1_reduction * a1_efficiency
 gearbox2_max_torque = q2_max_torque * a2_reduction * a2_efficiency
@@ -101,10 +100,10 @@ zposForward = a1*np.sin(q1_up) + a2*np.sin(q1_up+q2_up)
 fig = make_subplots(rows=3, cols=2, subplot_titles=(
 	'Thetas of Achievable Cartesian Points',
 		'Achievable Cartesian Points',
-		'dtheta1/dx',
-		'dtheta2/dx',
-		'dtheta1/dz',
-		'dtheta2/dz',
+		't1(x,z) dx',
+		't2(x,z) dx',
+		't1(x,z) dz',
+		't2(x,z) dz',
 		)
 )
 
@@ -291,14 +290,14 @@ condition = np.logical_and(condition, ~nancondition)
 dq1xdt_plot = go.Scatter(
     x=xmesh[condition].flatten(),
     y=zmesh[condition].flatten(),
-    name='dtheta1/dx',
+    name='t1(x,z) dx',
     mode='markers',
     hoverinfo='none',
     marker=dict(
         size=3,
-        color=np.abs(dq1xdt[condition].flatten()),
+        color=np.abs(t1[condition].flatten()),
         colorscale='plasma',
-        colorbar=dict(title="dq1x/dt"),
+        colorbar=dict(title="t1(x,z) dx"),
         coloraxis="coloraxis1",  # Link to the first color axis
     ),
     hovertemplate='%{marker.color:.1f}<extra></extra>'
@@ -307,13 +306,13 @@ dq1xdt_plot = go.Scatter(
 dq2xdt_plot = go.Scatter(
     x=xmesh[condition].flatten(),
     y=zmesh[condition].flatten(),
-    name='dtheta2/dx',
+    name='t2(x,z) dx',
     mode='markers',
     marker=dict(
         size=3,
-        color=np.abs(dq2xdt[condition].flatten()),
+        color=np.abs(t2[condition].flatten()),
         colorscale='plasma',
-        colorbar=dict(title="dq2x/dt"),
+        colorbar=dict(title="t2(x,z) dx"),
         coloraxis="coloraxis2"  # Link to the second color axis
     ),
     hovertemplate='%{marker.color:.1f}<extra></extra>'
@@ -328,7 +327,7 @@ condition = np.logical_and(~nancondition, torque_condition)
 dq1dxdt_torque_fail_plot = go.Scatter(
     x=xmesh[condition].flatten(),
     y=zmesh[condition].flatten(),
-    name='dtheta1/dx',
+    # name='dtheta1/dx',
     mode='markers',
     marker=dict(
         size=3,
@@ -343,7 +342,7 @@ condition = np.logical_and(~nancondition, speed_condition)
 dq1dxdt_speed_fail_plot = go.Scatter(
     x=xmesh[condition].flatten(),
     y=zmesh[condition].flatten(),
-    name='dtheta1/dx',
+    # name='dtheta1/dx',
     mode='markers',
     marker=dict(
         size=3,
@@ -364,7 +363,7 @@ condition = np.logical_and(~nancondition, speed_condition)
 dq2dxdt_torque_fail_plot = go.Scatter(
     x=xmesh[condition].flatten(),
     y=zmesh[condition].flatten(),
-    name='dtheta2/dx',
+    # name='dtheta2/dx',
     mode='markers',
     marker=dict(
         size=3,
@@ -378,7 +377,7 @@ condition = np.logical_and(~nancondition, speed_condition)
 dq2dxdt_speed_fail_plot = go.Scatter(
     x=xmesh[condition].flatten(),
     y=zmesh[condition].flatten(),
-    name='dtheta2/dx',
+    # name='dtheta2/dx',
     mode='markers',
     marker=dict(
         size=3,
@@ -400,8 +399,8 @@ fig.update_yaxes(minor_ticks="inside")
 
 # Update the layout to include separate color axes and locate them on the page
 fig.update_layout(
-    coloraxis1=dict(colorscale='plasma', colorbar=dict(title="dtheta1dx", x=0.45, y=0.5, len=0.3)),
-    coloraxis2=dict(colorscale='plasma', colorbar=dict(title="dtheta2dx", x=1.0, y=0.5, len=0.3))
+    coloraxis1=dict(colorscale='plasma', colorbar=dict(title="t1(x,z) dx", x=0.45, y=0.5, len=0.3)),
+    coloraxis2=dict(colorscale='plasma', colorbar=dict(title="t2(x,z) dx", x=1.0, y=0.5, len=0.3))
 )
 
 
@@ -453,13 +452,13 @@ condition = np.logical_and(condition, ~nancondition)
 dq1dz_plot = go.Scatter(
     x=xmesh[condition].flatten(),
     y=zmesh[condition].flatten(),
-    name='dq1dz',
+    name='t1(x,z) dz',
     mode='markers',
     marker=dict(
         size=3,
-        color=np.abs(dq1zdt[condition].flatten()),
+        color=np.abs(t1[condition].flatten()),
         colorscale='plasma',
-        colorbar=dict(title="dq1/dz"),
+        colorbar=dict(title="t1(x,z) dz"),
         coloraxis="coloraxis3"  # Link to the proper color axis
     ),
     hovertemplate='%{marker.color:.1f}<extra></extra>',
@@ -469,13 +468,13 @@ dq1dz_plot = go.Scatter(
 dq2dz_plot = go.Scatter(
     x=xmesh[condition].flatten(),
     y=zmesh[condition].flatten(),
-    name='dq2dz',
+    name='t2(x,z) dz',
     mode='markers',
     marker=dict(
         size=3,
         color=np.abs(dq2zdt[condition].flatten()),
         colorscale='plasma',
-        colorbar=dict(title="dq2/dz"),
+        colorbar=dict(title="t2(x,z) dz"),
         coloraxis="coloraxis4" # Link to the proper color axis
     ),
     hovertemplate='%{marker.color:.1f}<extra></extra>',
@@ -497,7 +496,7 @@ condition = np.logical_and(~nancondition, torque_condition)
 dq1dzdt_torque_fail_plot = go.Scatter(
     x=xmesh[condition].flatten(),
     y=zmesh[condition].flatten(),
-    name='dq1/dz',
+    # name='dq1/dz',
     mode='markers',
     marker=dict(
         size=3,
@@ -512,7 +511,7 @@ condition = np.logical_and(~nancondition, speed_condition)
 dq1dzdt_speed_fail_plot = go.Scatter(
     x=xmesh[condition].flatten(),
     y=zmesh[condition].flatten(),
-    name='dq1/dz',
+    # name='dq1/dz',
     mode='markers',
     marker=dict(
         size=3,
@@ -532,7 +531,7 @@ condition = np.logical_and(~nancondition, torque_condition)
 dq2dzdt_torque_fail_plot = go.Scatter(
     x=xmesh[condition].flatten(),
     y=zmesh[condition].flatten(),
-    name='dq1/dz',
+    # name='dq1/dz',
     mode='markers',
     marker=dict(
         size=3,
@@ -546,7 +545,7 @@ condition = np.logical_and(~nancondition, speed_condition)
 dq2dzdt_speed_fail_plot = go.Scatter(
     x=xmesh[condition].flatten(),
     y=zmesh[condition].flatten(),
-    name='dq1/dz',
+    # name='dq1/dz',
     mode='markers',
     marker=dict(
         size=3,
