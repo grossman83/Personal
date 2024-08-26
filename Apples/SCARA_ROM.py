@@ -19,8 +19,8 @@ def make_axes_equal(fig):
 
 
 ################################ INPUTS ######################################
-a1_length = 600
-a2_length = 600
+a1_length = 300
+a2_length = 450
 
 a1_mass = 3.6#kg
 a2_mass = 3.85#kg
@@ -30,7 +30,6 @@ a2_arm = 0.257#m
 
 q1_max_torque = 4#N*m
 q2_max_torque = 4#N*m
-
 
 a1_reduction = 16
 a2_reduction = 7
@@ -79,6 +78,10 @@ zmesh = mesh[1]
 
 
 #trying to get it to stop telling me about divide by zero and stuff.
+#this does not seem to be working as I still get these:
+# invalid value encountered in arccos
+# divide by zero encountered in divide
+
 np.errstate(all='ignore')
 
 
@@ -136,6 +139,76 @@ xposForward_flat = xposForward.flatten()
 zposForward_flat = zposForward.flatten()
 j2pos_x_flat = j2pos_x.flatten()
 j2pos_z_flat = j2pos_z.flatten()
+
+
+
+###############################JACOBIAN ETC####################################
+# now I need to play with the jacobian matrix to see where the RPM is high
+# and where the accelerations are high.
+# to do this I'll take each of the points and move them by 1mm in X and Z
+# and see the delta in the theta. This will give me the dtheta/dx
+# and the dtheta/dz for each of the axes.
+
+delta = 1
+mesh_add = delta * np.ones([num_pts, num_pts])
+
+#calculate dtheta/dx
+xmesh = mesh[0] + mesh_add
+zmesh = mesh[1]
+q2dx = np.arccos((np.square(xmesh) + np.square(zmesh) - np.square(a1) - np.square(a2))/(2*a1*a2))
+q1dx = np.arctan(zmesh/xmesh) - np.arctan((a2*np.sin(q2_up))/(a1+a2*np.cos(q2_up)))
+dq2dx = (q2dx - q2_up)/delta #rad/mm
+dq1dx = (q1dx - q1_up)/delta
+
+
+#calculate dtheta/dz
+xmesh = mesh[0]
+zmesh = mesh[1] + mesh_add
+q2dz = np.arccos((np.square(xmesh) + np.square(zmesh) - np.square(a1) - np.square(a2))/(2*a1*a2))
+q1dz = np.arctan(zmesh/xmesh) - np.arctan((a2*np.sin(q2_up))/(a1+a2*np.cos(q2_up)))
+dq2dz = (q2dz - q2_up)/delta #rad/mm
+dq1dz = (q1dz - q1_up)/delta
+
+
+#rotational velocity dtheta/dt for dx/dt
+#assumes that we're moving at maximum cartesian velocity parallel to x-axis
+dq1xdt = dq1dx * max_cart_vel #rad/mm * mm/s = rad/s
+dq2xdt = dq2dx * max_cart_vel
+dq1zdt = dq1dz * max_cart_vel
+dq2zdt = dq2dz * max_cart_vel
+
+#rotational acceleration for a path parallel to x-axis
+dq1xdtdt = dq1dx * max_cart_accel #rad/mm * mm/s2 = rad/s2
+dq2xdtdt = dq2dx * max_cart_accel
+dq1zdtdt = dq1dz * max_cart_accel
+dq2zdtdt = dq2dz * max_cart_accel
+###############################JACOBIAN ETC####################################
+
+
+###############################Torque Calculation##############################
+#calculate torques due to rotational accelerations of the joints.
+t2 = dq2xdtdt * a2_inertia
+
+#torque due to gravity.
+tg2 = -1 * a2_mass * a2_arm * np.cos(q2_up+q1_up)#gravity results in - torque
+t2 = t2 + tg2
+t1 = dq1xdtdt*a1_inertia - np.cos(q1_up)*a1_mass*a1_arm + t2
+
+#@todo
+#need torques due to velocity. (dynamics)
+
+
+###############################Torque Calculation##############################
+
+
+
+
+
+
+def get_torque_speed(x,y, dxdt, dydt, dxdtdt, dydtdt):
+	pass
+
+
 
 
 
@@ -208,46 +281,7 @@ fig.add_trace(cart_pts_forward, row=1, col=2)
 
 
 
-# now I need to play with the jacobian matrix to see where the RPM is high
-# and where the accelerations are high.
-# to do this I'll take each of the points and move them by 1mm in X and Z
-# and see the delta in the theta. This will give me the dx/dtheta
-# and the dz/dtheta for each of the axes.
 
-delta = 1
-mesh_add = delta * np.ones([num_pts, num_pts])
-
-#calculate dtheta/dx
-xmesh = mesh[0] + mesh_add
-zmesh = mesh[1]
-q2dx = np.arccos((np.square(xmesh) + np.square(zmesh) - np.square(a1) - np.square(a2))/(2*a1*a2))
-q1dx = np.arctan(zmesh/xmesh) - np.arctan((a2*np.sin(q2_up))/(a1+a2*np.cos(q2_up)))
-dq2dx = (q2dx - q2_up)/delta #rad/mm
-dq1dx = (q1dx - q1_up)/delta
-
-
-#calculate dtheta/dz
-xmesh = mesh[0]
-zmesh = mesh[1] + mesh_add
-q2dz = np.arccos((np.square(xmesh) + np.square(zmesh) - np.square(a1) - np.square(a2))/(2*a1*a2))
-q1dz = np.arctan(zmesh/xmesh) - np.arctan((a2*np.sin(q2_up))/(a1+a2*np.cos(q2_up)))
-dq2dz = (q2dz - q2_up)/delta #rad/mm
-dq1dz = (q1dz - q1_up)/delta
-
-
-
-#rotational velocity dtheta/dt for dx/dt
-#assumes that we're moving at maximum cartesian velocity parallel to x-axis
-dq1xdt = dq1dx * max_cart_vel #rad/mm * mm/s = rad/s
-dq2xdt = dq2dx * max_cart_vel
-dq1zdt = dq1dz * max_cart_vel
-dq2zdt = dq2dz * max_cart_vel
-
-#rotational acceleration for a path parallel to x-axis
-dq1xdtdt = dq1dx * max_cart_accel #rad/mm * mm/s2 = rad/s2
-dq2xdtdt = dq2dx * max_cart_accel
-dq1zdtdt = dq1dz * max_cart_accel
-dq2zdtdt = dq2dz * max_cart_accel
 
 
 
@@ -261,16 +295,7 @@ speed_condition = np.logical_and(
 	np.abs(dq2xdt)<max_omega2
 	)
 
-#calculate torques due to rotational accelerations of the joints.
-t2 = dq2xdtdt * a2_inertia
 
-#torque due to gravity.
-tg2 = -1 * a2_mass * a2_arm * np.cos(q2_up+q1_up)#gravity results in - torque
-t2 = t2 + tg2
-t1 = dq1xdtdt*a1_inertia - np.cos(q1_up)*a1_mass*a1_arm + t2
-
-#@todo
-#need torques due to velocity. (dynamics)
 
 
 torque_condition = np.logical_and(
@@ -284,7 +309,6 @@ condition = np.logical_and(speed_condition, torque_condition)
 #to torque or speed it screws up the scale on the plots.
 condition = np.logical_and(condition, ~nancondition)
 
-# pdb.set_trace()
 
 
 dq1xdt_plot = go.Scatter(
@@ -404,16 +428,6 @@ fig.update_layout(
 )
 
 
-
-#calculate dtheta/dz
-xmesh = mesh[0] 
-zmesh = mesh[1] + mesh_add
-q2dz = np.arccos((np.square(xmesh) + np.square(zmesh) - np.square(a1) - np.square(a2))/(2*a1*a2))
-q1dz = np.arctan(zmesh/xmesh) - np.arctan((a2*np.sin(q2_up))/(a1+a2*np.cos(q2_up)))
-dq2dz = (q2dz - q2_up)/delta
-dq1dz = (q1dz - q1_up)/delta
-
-
 #conditions
 # condition for bit-masking the stuff that is out of the ROM.
 # only need to check dtheta1 because it is based on dtheta 2 anyhow
@@ -425,17 +439,6 @@ speed_condition = np.logical_and(
 	np.abs(dq2zdt)<max_omega2
 	)
 
-#calculate torques due to rotational accelerations of the joints.
-t2 = dq2zdtdt * a2_inertia
-
-#torque due to gravity.
-tg2 = -1 * a2_mass * a2_arm * np.cos(q2_up+q1_up)#gravity results in - torque
-
-t2 = t2 + tg2
-t1 = dq1zdtdt*a1_inertia - np.cos(q1_up)*a1_mass*a1_arm + t2
-
-#@todo
-#need torques due to velocity. (dynamics)
 
 
 torque_condition = np.logical_and(
@@ -602,75 +605,6 @@ pio.write_html(fig2,
 fig.show()
 
 pdb.set_trace()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# this was meant to work on the motion and timing. I'll come back to it later.
-# def getLinearPoints(x_if, z_if, duration, max_speed, max_accel, num_pts):
-# 	dx = x_if[1] - x_if[0]
-# 	dz = z_if[1] - z_if[0]
-# 	dt = 
-
-# 	path_length = np.sqrt(dx**2 + dy**2)
-# 	max_accel_duration = max_speed/max_accel
-# 	if duration > 2*max_accel_duration:
-# 		#the path is long enough that we're going to get a trapezoidal path
-# 		xs = np.zeros(num_pts)
-# 		zs = np.zeros(num_pts)
-
-# 		xs[0] = x_if[0]
-# 		xs[-1] = x_if[1]
-
-# 		#determine if max accel is needed to reach max speed not overshoot
-# 		if (dx < 0.5*max_accel*dt**2):
-# 			#accel at max velosity for timestep
-
-
-
-
-
-# 	if duration <= 2*max_accel_duration:
-# 		pass
-
-
-# 	return 0
-
-
-
-
-
-
 
 
 
