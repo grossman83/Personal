@@ -52,7 +52,7 @@ def calc_window_time(windows, apples):
 
 
 
-window_width = 4.0
+window_width = 1.0
 window_height = 1.0
 r1_corner = [0, 0]
 r2_corner = [0, 1.0]
